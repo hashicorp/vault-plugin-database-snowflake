@@ -23,6 +23,11 @@ If you believe you have found a security issue in Vault or with this plugin, _pl
 ## Acceptance Testing
 In order to perform acceptance testing, you need to set the environment variable `VAULT_ACC=1` as well as provide all of the necessary information to connect to a Snowflake Project. All `SNOWFLAKE_*` environment variables must be provided in order for the acceptance tests to run properly. A cluster must be available during the test. A [30-day trial account](https://signup.snowflake.com/) can be provisioned manually to test.
 
-*Table of Env Vars Forthcoming*
 | Environment Variable | Description |
 |----------------------|-------------|
+| SNOWFLAKE_ACCOUNT    | The account string for your snowflake instance. If you are using a non-AWS provider, or a region that isn't us-west-1 for AWS, region and provider should be included here. (example: `ec#####.east-us-2.azure`) |
+| SNOWFLAKE_USER       | The accountadmin level user that you are using with Vault |
+| SNOWFLAKE_PASSWORD   | The password associated with the provided user |
+| SNOWFLAKE_DB         | optional: The DB you are restricting the connection to |
+| SNOWFLAKE_SCHEMA     | optional: The schema you are restricting the connection to |
+| SNOWFLAKE_WAREHOUSE  | optional: The warehouse you are restricting the connection to |
