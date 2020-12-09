@@ -143,6 +143,7 @@ func (s *SnowflakeSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest)
 				"password":   password,
 				"expiration": expirationStr,
 			}
+
 			if err := dbtxn.ExecuteDBQuery(ctx, db, m, query); err != nil {
 				return dbplugin.NewUserResponse{}, err
 			}
