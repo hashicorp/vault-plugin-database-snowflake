@@ -43,8 +43,8 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-vault-plugin-secrets-mongodbatlas
-vault-plugin-database-mongodbatlas
+vault-plugin-secrets-snowflake
+vault-plugin-database-snowflake
 vault*
 
 .idea/
