@@ -63,18 +63,6 @@ func new() *SnowflakeSQL {
 	return db
 }
 
-// Run instantiates a SnowflakeSQL object, and runs the RPC server for the plugin
-func Run() error {
-	dbType, err := New()
-	if err != nil {
-		return err
-	}
-
-	dbplugin.Serve(dbType.(dbplugin.Database))
-
-	return nil
-}
-
 type SnowflakeSQL struct {
 	*connutil.SQLConnectionProducer
 }
@@ -120,7 +108,10 @@ func (s *SnowflakeSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest)
 	}
 
 	password := req.Password
-	expirationStr := calculateExpirationString(req.Expiration)
+	expirationStr, err := calculateExpirationString(req.Expiration)
+	if err != nil {
+		return dbplugin.NewUserResponse{}, err
+	}
 
 	// Get the connection
 	db, err := s.getConnection(ctx)
@@ -172,6 +163,11 @@ func (s *SnowflakeSQL) UpdateUser(ctx context.Context, req dbplugin.UpdateUserRe
 	s.Lock()
 	defer s.Unlock()
 
+	if req.Username == "" {
+		err := fmt.Errorf("a username must be provided to update a user")
+		return dbplugin.UpdateUserResponse{}, err
+	}
+
 	db, err := s.getConnection(ctx)
 	if err != nil {
 		return dbplugin.UpdateUserResponse{}, err
@@ -208,7 +204,7 @@ func (s *SnowflakeSQL) updateUserPassword(ctx context.Context, tx *sql.Tx, usern
 	password := req.NewPassword
 
 	if username == "" || password == "" {
-		return fmt.Errorf("must provide both username and password")
+		return fmt.Errorf("must provide both username and password to modify password")
 	}
 
 	stmts := req.Statements.Commands
@@ -242,10 +238,13 @@ func (s *SnowflakeSQL) updateUserExpiration(ctx context.Context, tx *sql.Tx, use
 	expiration := req.NewExpiration
 
 	if username == "" || expiration.IsZero() {
-		return fmt.Errorf("must provide both username and valid expiration")
+		return fmt.Errorf("must provide both username and valid expiration to modify expiration")
 	}
 
-	expirationStr := calculateExpirationString(expiration)
+	expirationStr, err := calculateExpirationString(expiration)
+	if err != nil {
+		return err
+	}
 
 	stmts := req.Statements.Commands
 	if len(stmts) == 0 {
@@ -309,14 +308,21 @@ func (s *SnowflakeSQL) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRe
 	return dbplugin.DeleteUserResponse{}, err
 }
 
-func calculateExpirationString(expiration time.Time) string {
+// calculateExpirationString has a minimum expiration of 1 Day. This
+// limitation is due to Snowflake requiring any expiration to be in
+// terms of days, with 1 being the minimum.
+func calculateExpirationString(expiration time.Time) (string, error) {
 	currentTime := time.Now()
 
-	expirationTime := expiration
-	timeDiff := expirationTime.Sub(currentTime)
-	inSeconds := timeDiff.Seconds()
-	inDays := math.Max(math.Floor(inSeconds/float64(60*60*24)), 1)
+	if currentTime.Before(expiration) {
+		timeDiff := expiration.Sub(currentTime)
+		inSeconds := timeDiff.Seconds()
+		inDays := math.Max(math.Floor(inSeconds/float64(60*60*24)), 1)
 
-	expirationStr := fmt.Sprintf("%d", int(inDays))
-	return expirationStr
+		expirationStr := fmt.Sprintf("%d", int(inDays))
+		return expirationStr, nil
+	} else {
+		err := fmt.Errorf("expiration time earlier than current time")
+		return "", err
+	}
 }

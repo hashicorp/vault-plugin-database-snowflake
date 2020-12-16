@@ -29,8 +29,8 @@ const (
 
 var runAcceptanceTests = os.Getenv(envVarRunAccTests) != ""
 
-func connectToInstance(t *testing.T) string {
-	connURL, err := getDsnString()
+func connUrl(t *testing.T) string {
+	connURL, err := dsnString()
 	if err != nil {
 		t.Fatalf("failed to retrieve connection DSN: %s", err)
 	}
@@ -46,7 +46,7 @@ func TestSnowflakeSQL_Initialize(t *testing.T) {
 	db := new()
 	defer dbtesting.AssertClose(t, db)
 
-	connURL, err := getDsnString()
+	connURL, err := dsnString()
 	if err != nil {
 		t.Fatalf("failed to retrieve connection DSN: %s", err)
 	}
@@ -104,7 +104,7 @@ func TestSnowflake_NewUser(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			connURL := connectToInstance(t)
+			connURL := connUrl(t)
 
 			db := new()
 			defer dbtesting.AssertClose(t, db)
@@ -128,7 +128,7 @@ func TestSnowflake_NewUser(t *testing.T) {
 					Commands: test.creationStmts,
 				},
 				Password:   password,
-				Expiration: time.Time{},
+				Expiration: time.Now().Add(time.Hour),
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), getRequestTimeout(t))
@@ -160,7 +160,7 @@ func TestSnowflake_RenewUser(t *testing.T) {
 		t.SkipNow()
 	}
 
-	connURL := connectToInstance(t)
+	connURL := connUrl(t)
 
 	db := new()
 	defer dbtesting.AssertClose(t, db)
@@ -187,7 +187,7 @@ func TestSnowflake_RenewUser(t *testing.T) {
 			},
 		},
 		Password:   password,
-		Expiration: time.Now().Add(2 * time.Second),
+		Expiration: time.Now().Add(time.Hour),
 	}
 
 	createResp := dbtesting.AssertNewUser(t, db, createReq)
@@ -215,7 +215,7 @@ func TestSnowflake_RevokeUser(t *testing.T) {
 		t.SkipNow()
 	}
 
-	connURL := connectToInstance(t)
+	connURL := connUrl(t)
 
 	type testCase struct {
 		deleteStatements []string
@@ -262,7 +262,7 @@ func TestSnowflake_RevokeUser(t *testing.T) {
 					},
 				},
 				Password:   password,
-				Expiration: time.Now().Add(2 * time.Second),
+				Expiration: time.Now().Add(time.Hour),
 			}
 
 			createResp := dbtesting.AssertNewUser(t, db, createReq)
@@ -281,7 +281,7 @@ func TestSnowflake_RevokeUser(t *testing.T) {
 	}
 }
 
-func getDsnString() (string, error) {
+func dsnString() (string, error) {
 	user := os.Getenv(envVarSnowflakeUser)
 	password := os.Getenv(envVarSnowflakePassword)
 	account := os.Getenv(envVarSnowflakeAccount)
