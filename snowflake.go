@@ -119,6 +119,12 @@ func (s *SnowflakeSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest)
 		return dbplugin.NewUserResponse{}, err
 	}
 
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return dbplugin.NewUserResponse{}, err
+	}
+	defer tx.Rollback()
+
 	// Execute each query
 	for _, stmt := range statements {
 		// it's fine to split the statements on the semicolon.
@@ -135,7 +141,7 @@ func (s *SnowflakeSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest)
 				"expiration": expirationStr,
 			}
 
-			if err := dbtxn.ExecuteDBQuery(ctx, db, m, query); err != nil {
+			if err := dbtxn.ExecuteTxQuery(ctx, tx, m, query); err != nil {
 				return dbplugin.NewUserResponse{}, err
 			}
 		}
@@ -288,6 +294,12 @@ func (s *SnowflakeSQL) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRe
 		return dbplugin.DeleteUserResponse{}, err
 	}
 
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return dbplugin.DeleteUserResponse{}, err
+	}
+	defer tx.Rollback()
+
 	for _, stmt := range statements {
 		for _, query := range strutil.ParseArbitraryStringSlice(stmt, ";") {
 			query = strings.TrimSpace(query)
@@ -299,12 +311,13 @@ func (s *SnowflakeSQL) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRe
 				"name":     username,
 				"username": username,
 			}
-			if err := dbtxn.ExecuteDBQuery(ctx, db, m, query); err != nil {
+			if err := dbtxn.ExecuteTxQuery(ctx, tx, m, query); err != nil {
 				return dbplugin.DeleteUserResponse{}, err
 			}
 		}
 	}
 
+	err = tx.Commit()
 	return dbplugin.DeleteUserResponse{}, err
 }
 

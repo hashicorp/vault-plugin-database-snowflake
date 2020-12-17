@@ -3,7 +3,6 @@ package snowflake
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -11,10 +10,10 @@ import (
 	"testing"
 	"time"
 
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/sdk/database/dbplugin/v5"
 	dbtesting "github.com/hashicorp/vault/sdk/database/dbplugin/v5/testing"
 	"github.com/snowflakedb/gosnowflake"
-	_ "github.com/snowflakedb/gosnowflake"
 )
 
 const (
@@ -286,8 +285,18 @@ func dsnString() (string, error) {
 	password := os.Getenv(envVarSnowflakePassword)
 	account := os.Getenv(envVarSnowflakeAccount)
 
-	if user == "" || password == "" || account == "" {
-		err := errors.New("critical env vars were not set. user, password, and account must all be set")
+	var err error
+	if user == "" {
+		err = multierror.Append(err, fmt.Errorf("SNOWFLAKE_USER not set"))
+	}
+	if password == "" {
+		err = multierror.Append(err, fmt.Errorf("SNOWFLAKE_PASSWORD not set"))
+	}
+	if account == "" {
+		err = multierror.Append(err, fmt.Errorf("SNOWFLAKE_ACCOUNT not set"))
+	}
+
+	if err != nil {
 		return "", err
 	}
 
