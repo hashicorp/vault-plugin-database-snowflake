@@ -147,10 +147,11 @@ func (s *SnowflakeSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest)
 		}
 	}
 
+	err = tx.Commit()
 	resp := dbplugin.NewUserResponse{
 		Username: username,
 	}
-	return resp, nil
+	return resp, err
 }
 
 func (s *SnowflakeSQL) generateUsername(req dbplugin.NewUserRequest) (string, error) {
