@@ -321,7 +321,10 @@ func testCredentialsExist(connString, username, password string) error {
 	if err != nil {
 		return err
 	}
-	connURL := fmt.Sprintf("%s:%s@%s.%s", username, password, conf.Account, conf.Region)
+	connURL := fmt.Sprintf("%s:%s@%s", username, password, conf.Account)
+	if conf.Region != "" {
+		connURL = fmt.Sprintf("%s.%s", connURL, conf.Region)
+	}
 
 	db, err := sql.Open("snowflake", connURL)
 	if err != nil {
