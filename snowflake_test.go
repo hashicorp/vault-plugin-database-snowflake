@@ -15,7 +15,6 @@ import (
 	dbtesting "github.com/hashicorp/vault/sdk/database/dbplugin/v5/testing"
 	"github.com/snowflakedb/gosnowflake"
 	"github.com/stretchr/testify/require"
-
 )
 
 const (
