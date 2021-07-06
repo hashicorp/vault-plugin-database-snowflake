@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/vault/sdk/database/dbplugin/v5"
 	dbtesting "github.com/hashicorp/vault/sdk/database/dbplugin/v5/testing"
 	"github.com/snowflakedb/gosnowflake"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -278,6 +279,95 @@ func TestSnowflake_RevokeUser(t *testing.T) {
 			assertCredentialsDoNotExist(t, connURL, createResp.Username, password)
 		})
 	}
+}
+
+func TestSnowflake_DefaultUsernameTemplate(t *testing.T) {
+	if !runAcceptanceTests {
+		t.SkipNow()
+	}
+
+	connURL := connUrl(t)
+
+	db := new()
+	defer dbtesting.AssertClose(t, db)
+
+	initReq := dbplugin.InitializeRequest{
+		Config: map[string]interface{}{
+			"connection_url": connURL,
+		},
+		VerifyConnection: true,
+	}
+	dbtesting.AssertInitialize(t, db, initReq)
+
+	password := "y8fva_sdVA3rasf"
+	createReq := dbplugin.NewUserRequest{
+		UsernameConfig: dbplugin.UsernameMetadata{
+			DisplayName: "test",
+			RoleName:    "test",
+		},
+		Statements: dbplugin.Statements{
+			Commands: []string{`
+				CREATE USER {{name}} PASSWORD = '{{password}}';
+				GRANT ROLE myrole TO USER {{name}};`,
+			},
+		},
+		Password:   password,
+		Expiration: time.Now().Add(time.Hour),
+	}
+	createResp := dbtesting.AssertNewUser(t, db, createReq)
+
+	if createResp.Username == "" {
+		t.Fatalf("Missing username")
+	}
+
+	assertCredentialsExist(t, connURL, createResp.Username, password)
+
+	require.Regexp(t, `^v_test_test_[a-zA-Z0-9]{20}_[0-9]{10}$`, createResp.Username)
+}
+
+func TestSnowflake_CustomUsernameTemplate(t *testing.T) {
+	if !runAcceptanceTests {
+		t.SkipNow()
+	}
+
+	connURL := connUrl(t)
+
+	db := new()
+	defer dbtesting.AssertClose(t, db)
+
+	initReq := dbplugin.InitializeRequest{
+		Config: map[string]interface{}{
+			"connection_url": connURL,
+			"username_template": "{{.DisplayName}}_{{random 10}}",
+		},
+		VerifyConnection: true,
+	}
+	dbtesting.AssertInitialize(t, db, initReq)
+
+	password := "y8fva_sdVA3rasf"
+	createReq := dbplugin.NewUserRequest{
+		UsernameConfig: dbplugin.UsernameMetadata{
+			DisplayName: "test",
+			RoleName:    "test",
+		},
+		Statements: dbplugin.Statements{
+			Commands: []string{`
+				CREATE USER {{name}} PASSWORD = '{{password}}';
+				GRANT ROLE myrole TO USER {{name}};`,
+			},
+		},
+		Password:   password,
+		Expiration: time.Now().Add(time.Hour),
+	}
+	createResp := dbtesting.AssertNewUser(t, db, createReq)
+
+	if createResp.Username == "" {
+		t.Fatalf("Missing username")
+	}
+
+	assertCredentialsExist(t, connURL, createResp.Username, password)
+
+	require.Regexp(t, `^test_[a-zA-Z0-9]{10}$`, createResp.Username)
 }
 
 func dsnString() (string, error) {
