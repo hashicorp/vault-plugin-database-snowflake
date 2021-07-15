@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/hashicorp/errwrap"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/vault/sdk/database/dbplugin/v5"
 	"github.com/hashicorp/vault/sdk/database/helper/connutil"
 	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
 	"github.com/hashicorp/vault/sdk/helper/dbtxn"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/vault/sdk/helper/template"
 	_ "github.com/snowflakedb/gosnowflake"
 )
@@ -32,9 +32,7 @@ drop user {{name}};
 	defaultUserNameTemplate = `{{ printf "v_%s_%s_%s_%s" (.DisplayName | truncate 32) (.RoleName | truncate 32) (random 20) (unix_time) | truncate 255 | replace "-" "_" }}`
 )
 
-var (
-	_ dbplugin.Database = (*SnowflakeSQL)(nil)
-)
+var _ dbplugin.Database = (*SnowflakeSQL)(nil)
 
 func New() (interface{}, error) {
 	db := new()
@@ -173,7 +171,6 @@ func (s *SnowflakeSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest)
 
 func (s *SnowflakeSQL) generateUsername(req dbplugin.NewUserRequest) (string, error) {
 	username, err := s.usernameProducer.Generate(req.UsernameConfig)
-
 	if err != nil {
 		return "", errwrap.Wrapf("error generating username: {{err}}", err)
 	}
