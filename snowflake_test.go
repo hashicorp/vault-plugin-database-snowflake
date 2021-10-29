@@ -337,7 +337,7 @@ func TestSnowflake_CustomUsernameTemplate(t *testing.T) {
 
 	initReq := dbplugin.InitializeRequest{
 		Config: map[string]interface{}{
-			"connection_url": connURL,
+			"connection_url":    connURL,
 			"username_template": "{{.DisplayName}}_{{random 10}}",
 		},
 		VerifyConnection: true,
@@ -459,7 +459,7 @@ func attemptDropUser(connString, username string) {
 func getRequestTimeout(t *testing.T) time.Duration {
 	rawDur := os.Getenv("VAULT_TEST_DATABASE_REQUEST_TIMEOUT")
 	if rawDur == "" {
-		return 2 * time.Second
+		return 10 * time.Second
 	}
 
 	dur, err := time.ParseDuration(rawDur)
