@@ -459,7 +459,7 @@ func attemptDropUser(connString, username string) {
 func getRequestTimeout(t *testing.T) time.Duration {
 	rawDur := os.Getenv("VAULT_TEST_DATABASE_REQUEST_TIMEOUT")
 	if rawDur == "" {
-		return 2 * time.Second
+		return 10 * time.Second
 	}
 
 	dur, err := time.ParseDuration(rawDur)
