@@ -84,15 +84,15 @@ func TestSnowflake_NewUser(t *testing.T) {
 	tests := map[string]testCase{
 		"name creation": {
 			creationStmts: []string{`
-				CREATE USER {{name}} PASSWORD = '{{password}}' DEFAULT_ROLE = myrole;
-				GRANT ROLE myrole TO USER {{name}};`,
+				CREATE USER "{{name}}" PASSWORD = '{{password}}' DEFAULT_ROLE = myrole;
+				GRANT ROLE myrole TO USER "{{name}}";`,
 			},
 			expectErr: false,
 		},
 		"username creation": {
 			creationStmts: []string{`
-				CREATE USER {{username}} PASSWORD = '{{password}}';
-				GRANT ROLE myrole TO USER {{username}};`,
+				CREATE USER "{{username}}" PASSWORD = '{{password}}';
+				GRANT ROLE myrole TO USER "{{username}}";`,
 			},
 			expectErr: false,
 		},
@@ -182,8 +182,8 @@ func TestSnowflake_RenewUser(t *testing.T) {
 		},
 		Statements: dbplugin.Statements{
 			Commands: []string{`
-				CREATE USER {{name}} PASSWORD = '{{password}}';
-				GRANT ROLE myrole TO USER {{name}};`,
+				CREATE USER "{{name}}" PASSWORD = '{{password}}';
+				GRANT ROLE myrole TO USER "{{name}}";`,
 			},
 		},
 		Password:   password,
@@ -224,12 +224,12 @@ func TestSnowflake_RevokeUser(t *testing.T) {
 	tests := map[string]testCase{
 		"name revoke": {
 			deleteStatements: []string{`
-				DROP USER {{name}};`,
+				DROP USER "{{name}}";`,
 			},
 		},
 		"username revoke": {
 			deleteStatements: []string{`
-				DROP USER {{username}};`,
+				DROP USER "{{username}}";`,
 			},
 		},
 		"default revoke": {},
@@ -257,8 +257,8 @@ func TestSnowflake_RevokeUser(t *testing.T) {
 				},
 				Statements: dbplugin.Statements{
 					Commands: []string{`
-						CREATE USER {{name}} PASSWORD = '{{password}}';
-						GRANT ROLE myrole TO USER {{name}};`,
+						CREATE USER "{{name}}" PASSWORD = '{{password}}';
+						GRANT ROLE myrole TO USER "{{name}}";`,
 					},
 				},
 				Password:   password,
@@ -307,8 +307,8 @@ func TestSnowflake_DefaultUsernameTemplate(t *testing.T) {
 		},
 		Statements: dbplugin.Statements{
 			Commands: []string{`
-				CREATE USER {{name}} PASSWORD = '{{password}}';
-				GRANT ROLE myrole TO USER {{name}};`,
+				CREATE USER "{{name}}" PASSWORD = '{{password}}';
+				GRANT ROLE myrole TO USER "{{name}}";`,
 			},
 		},
 		Password:   password,
@@ -352,8 +352,8 @@ func TestSnowflake_CustomUsernameTemplate(t *testing.T) {
 		},
 		Statements: dbplugin.Statements{
 			Commands: []string{`
-				CREATE USER {{name}} PASSWORD = '{{password}}';
-				GRANT ROLE myrole TO USER {{name}};`,
+				CREATE USER "{{name}}" PASSWORD = '{{password}}';
+				GRANT ROLE myrole TO USER "{{name}}";`,
 			},
 		},
 		Password:   password,

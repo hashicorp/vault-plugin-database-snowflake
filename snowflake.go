@@ -21,13 +21,13 @@ import (
 const (
 	snowflakeSQLTypeName     = "snowflake"
 	defaultSnowflakeRenewSQL = `
-alter user {{name}} set DAYS_TO_EXPIRY = {{expiration}};
+alter user "{{name}}" set DAYS_TO_EXPIRY = {{expiration}};
 `
 	defaultSnowflakeRotateCredsSQL = `
-alter user {{name}} set PASSWORD = '{{password}}';
+alter user "{{name}}" set PASSWORD = '{{password}}';
 `
 	defaultSnowflakeDeleteSQL = `
-drop user {{name}};
+drop user "{{name}}";
 `
 	defaultUserNameTemplate = `{{ printf "v_%s_%s_%s_%s" (.DisplayName | truncate 32) (.RoleName | truncate 32) (random 20) (unix_time) | truncate 255 | replace "-" "_" }}`
 )
