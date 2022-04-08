@@ -122,7 +122,6 @@ func (s *SnowflakeSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest)
 		return dbplugin.NewUserResponse{}, err
 	}
 
-	password := req.Password
 	expirationStr, err := calculateExpirationString(req.Expiration)
 	if err != nil {
 		return dbplugin.NewUserResponse{}, err
@@ -152,10 +151,16 @@ func (s *SnowflakeSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest)
 			m := map[string]string{
 				"name":       username,
 				"username":   username,
-				"password":   password,
 				"expiration": expirationStr,
 			}
-
+			
+			switch req.CredentialType {
+			case dbplugin.CredentialTypePassword:
+				m["password"] = req.Password
+			case dbplugin.CredentialTypeRSA2048Keypair:
+				m["public_key"] = preparePublicKey(req.PublicKey)
+			}
+			
 			if err := dbtxn.ExecuteTxQuery(ctx, tx, m, query); err != nil {
 				return dbplugin.NewUserResponse{}, err
 			}
@@ -350,4 +355,14 @@ func calculateExpirationString(expiration time.Time) (string, error) {
 		err := fmt.Errorf("expiration time earlier than current time")
 		return "", err
 	}
+}
+
+// TODO: There might be a better way to do this. The documentation says 
+// they need to be stripped, but we should confirm this.
+// 
+// preparePublicKey strips the BEGIN and END lines from the public key PEM 
+// This is required by snowflake when setting the plugin key credential.
+func preparePublicKey(pub string) string {
+	pub = strings.Replace(pub, "-----BEGIN PUBLIC KEY-----\n", "", 1)
+	return strings.Replace(pub, "-----END PUBLIC KEY-----\n", "", 1)
 }
