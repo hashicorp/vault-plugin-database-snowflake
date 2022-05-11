@@ -43,8 +43,9 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-vault-plugin-secrets-snowflake
 vault-plugin-database-snowflake
+bin/
+pkg/
 
 .idea/
 # End of https://www.gitignore.io/api/go,macos
