@@ -57,9 +57,9 @@ func TestSnowflakeSQL_Initialize(t *testing.T) {
 
 	expectedConfig := map[string]interface{}{
 		"connection_url": connURL,
-		dbplugin.SupportedCredentialTypesKey: []dbplugin.CredentialType{
-			dbplugin.CredentialTypePassword,
-			dbplugin.CredentialTypeRSAPrivateKey,
+		dbplugin.SupportedCredentialTypesKey: []string{
+			dbplugin.CredentialTypePassword.String(),
+			dbplugin.CredentialTypeRSAPrivateKey.String(),
 		},
 	}
 	req := dbplugin.InitializeRequest{
