@@ -108,6 +108,11 @@ func (s *SnowflakeSQL) Initialize(ctx context.Context, req dbplugin.InitializeRe
 	resp := dbplugin.InitializeResponse{
 		Config: req.Config,
 	}
+	resp.SetSupportedCredentialTypes([]dbplugin.CredentialType{
+		dbplugin.CredentialTypePassword,
+		dbplugin.CredentialTypeRSAPrivateKey,
+	})
+
 	return resp, nil
 }
 
