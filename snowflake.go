@@ -23,8 +23,11 @@ const (
 	defaultSnowflakeRenewSQL = `
 alter user {{name}} set DAYS_TO_EXPIRY = {{expiration}};
 `
-	defaultSnowflakeRotateCredsSQL = `
+	defaultSnowflakeRotatePasswordSQL = `
 alter user {{name}} set PASSWORD = '{{password}}';
+`
+	defaultSnowflakeRotateRSAPublicKeySQL = `
+alter user {{name}} set RSA_PUBLIC_KEY = '{{public_key}}';
 `
 	defaultSnowflakeDeleteSQL = `
 drop user {{name}};
@@ -105,6 +108,11 @@ func (s *SnowflakeSQL) Initialize(ctx context.Context, req dbplugin.InitializeRe
 	resp := dbplugin.InitializeResponse{
 		Config: req.Config,
 	}
+	resp.SetSupportedCredentialTypes([]dbplugin.CredentialType{
+		dbplugin.CredentialTypePassword,
+		dbplugin.CredentialTypeRSAPrivateKey,
+	})
+
 	return resp, nil
 }
 
@@ -122,7 +130,6 @@ func (s *SnowflakeSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest)
 		return dbplugin.NewUserResponse{}, err
 	}
 
-	password := req.Password
 	expirationStr, err := calculateExpirationString(req.Expiration)
 	if err != nil {
 		return dbplugin.NewUserResponse{}, err
@@ -140,6 +147,22 @@ func (s *SnowflakeSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest)
 	}
 	defer tx.Rollback()
 
+	m := map[string]string{
+		"name":       username,
+		"username":   username,
+		"expiration": expirationStr,
+	}
+
+	switch req.CredentialType {
+	case dbplugin.CredentialTypePassword:
+		m["password"] = req.Password
+	case dbplugin.CredentialTypeRSAPrivateKey:
+		m["public_key"] = preparePublicKey(string(req.PublicKey))
+	default:
+		return dbplugin.NewUserResponse{}, fmt.Errorf("unsupported credential type %q",
+			req.CredentialType.String())
+	}
+
 	// Execute each query
 	for _, stmt := range statements {
 		// it's fine to split the statements on the semicolon.
@@ -147,13 +170,6 @@ func (s *SnowflakeSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest)
 			query = strings.TrimSpace(query)
 			if len(query) == 0 {
 				continue
-			}
-
-			m := map[string]string{
-				"name":       username,
-				"username":   username,
-				"password":   password,
-				"expiration": expirationStr,
 			}
 
 			if err := dbtxn.ExecuteTxQueryDirect(ctx, tx, m, query); err != nil {
@@ -197,8 +213,8 @@ func (s *SnowflakeSQL) UpdateUser(ctx context.Context, req dbplugin.UpdateUserRe
 	}
 	defer tx.Rollback()
 
-	if req.Password != nil {
-		err = s.updateUserPassword(ctx, tx, req.Username, req.Password)
+	if req.Password != nil || req.PublicKey != nil {
+		err = s.updateUserCredential(ctx, tx, req)
 		if err != nil {
 			return dbplugin.UpdateUserResponse{}, err
 		}
@@ -218,16 +234,40 @@ func (s *SnowflakeSQL) UpdateUser(ctx context.Context, req dbplugin.UpdateUserRe
 	return dbplugin.UpdateUserResponse{}, nil
 }
 
-func (s *SnowflakeSQL) updateUserPassword(ctx context.Context, tx *sql.Tx, username string, req *dbplugin.ChangePassword) error {
-	password := req.NewPassword
-
-	if username == "" || password == "" {
-		return fmt.Errorf("must provide both username and password to modify password")
+func (s *SnowflakeSQL) updateUserCredential(ctx context.Context, tx *sql.Tx, req dbplugin.UpdateUserRequest) error {
+	m := map[string]string{
+		"name":     req.Username,
+		"username": req.Username,
 	}
 
-	stmts := req.Statements.Commands
-	if len(stmts) == 0 {
-		stmts = []string{defaultSnowflakeRotateCredsSQL}
+	var stmts []string
+	switch req.CredentialType {
+	case dbplugin.CredentialTypePassword:
+		if req.Password == nil || req.Password.NewPassword == "" {
+			return fmt.Errorf("new password credential must not be empty")
+		}
+
+		stmts = req.Password.Statements.Commands
+		if len(stmts) == 0 {
+			stmts = []string{defaultSnowflakeRotatePasswordSQL}
+		}
+
+		m["password"] = req.Password.NewPassword
+
+	case dbplugin.CredentialTypeRSAPrivateKey:
+		if req.PublicKey == nil || len(req.PublicKey.NewPublicKey) == 0 {
+			return fmt.Errorf("new public key credential must not be empty")
+		}
+
+		stmts = req.PublicKey.Statements.Commands
+		if len(stmts) == 0 {
+			stmts = []string{defaultSnowflakeRotateRSAPublicKeySQL}
+		}
+
+		m["public_key"] = preparePublicKey(string(req.PublicKey.NewPublicKey))
+
+	default:
+		return fmt.Errorf("unsupported credential type %q", req.CredentialType.String())
 	}
 
 	for _, stmt := range stmts {
@@ -235,12 +275,6 @@ func (s *SnowflakeSQL) updateUserPassword(ctx context.Context, tx *sql.Tx, usern
 			query = strings.TrimSpace(query)
 			if len(query) == 0 {
 				continue
-			}
-
-			m := map[string]string{
-				"name":     username,
-				"username": username,
-				"password": password,
 			}
 
 			if err := dbtxn.ExecuteTxQueryDirect(ctx, tx, m, query); err != nil {
@@ -350,4 +384,13 @@ func calculateExpirationString(expiration time.Time) (string, error) {
 		err := fmt.Errorf("expiration time earlier than current time")
 		return "", err
 	}
+}
+
+// preparePublicKey strips the BEGIN and END lines from the given PEM string.
+// This is required by Snowflake when setting the RSA_PUBLIC_KEY credential per
+// the statement "Exclude the public key delimiters in the SQL statement" in
+// https://docs.snowflake.com/en/user-guide/key-pair-auth.html#step-4-assign-the-public-key-to-a-snowflake-user
+func preparePublicKey(pub string) string {
+	pub = strings.Replace(pub, "-----BEGIN PUBLIC KEY-----\n", "", 1)
+	return strings.Replace(pub, "-----END PUBLIC KEY-----\n", "", 1)
 }
