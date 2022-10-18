@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/errwrap"
@@ -63,6 +64,7 @@ func new() *SnowflakeSQL {
 
 type SnowflakeSQL struct {
 	*connutil.SQLConnectionProducer
+	sync.RWMutex
 
 	usernameProducer template.StringTemplate
 }
@@ -117,8 +119,8 @@ func (s *SnowflakeSQL) Initialize(ctx context.Context, req dbplugin.InitializeRe
 }
 
 func (s *SnowflakeSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (dbplugin.NewUserResponse, error) {
-	s.Lock()
-	defer s.Unlock()
+	s.RLock()
+	defer s.RUnlock()
 
 	statements := req.Statements.Commands
 	if len(statements) == 0 {
@@ -194,8 +196,8 @@ func (s *SnowflakeSQL) generateUsername(req dbplugin.NewUserRequest) (string, er
 }
 
 func (s *SnowflakeSQL) UpdateUser(ctx context.Context, req dbplugin.UpdateUserRequest) (dbplugin.UpdateUserResponse, error) {
-	s.Lock()
-	defer s.Unlock()
+	s.RLock()
+	defer s.RUnlock()
 
 	if req.Username == "" {
 		err := fmt.Errorf("a username must be provided to update a user")
@@ -326,8 +328,8 @@ func (s *SnowflakeSQL) updateUserExpiration(ctx context.Context, tx *sql.Tx, use
 }
 
 func (s *SnowflakeSQL) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest) (dbplugin.DeleteUserResponse, error) {
-	s.Lock()
-	defer s.Unlock()
+	s.RLock()
+	defer s.RUnlock()
 
 	username := req.Username
 	statements := req.Statements.Commands
