@@ -100,9 +100,10 @@ func TestSnowflake_NewUser(t *testing.T) {
 		},
 		"new user with password credential using name": {
 			credentialType: dbplugin.CredentialTypePassword,
-			creationStmts: []string{`
-				CREATE USER {{name}} PASSWORD = '{{password}}' DEFAULT_ROLE = myrole;
-				GRANT ROLE myrole TO USER {{name}};`,
+			creationStmts: []string{
+				`
+				CREATE USER {{name}} PASSWORD = '{{password}}' DEFAULT_ROLE = public;
+				GRANT ROLE public TO USER {{name}};`,
 			},
 			password: "y8fva_sdVA3rasf",
 		},
@@ -110,15 +111,16 @@ func TestSnowflake_NewUser(t *testing.T) {
 			credentialType: dbplugin.CredentialTypePassword,
 			creationStmts: []string{
 				"CREATE USER {{username}} PASSWORD = '{{password}}';",
-				"GRANT ROLE myrole TO USER {{username}};",
+				"GRANT ROLE public TO USER {{username}};",
 			},
 			password: "secure_password",
 		},
 		"new user with 2048 bit rsa_private_key credential": {
 			credentialType: dbplugin.CredentialTypeRSAPrivateKey,
-			creationStmts: []string{`
+			creationStmts: []string{
+				`
 				CREATE USER {{username}} RSA_PUBLIC_KEY='{{public_key}}';
-				GRANT ROLE myrole TO USER {{username}};`,
+				GRANT ROLE public TO USER {{username}};`,
 			},
 			keyBits: 2048,
 		},
@@ -133,7 +135,7 @@ func TestSnowflake_NewUser(t *testing.T) {
 			credentialType: dbplugin.CredentialTypeRSAPrivateKey,
 			creationStmts: []string{
 				"CREATE USER {{username}} RSA_PUBLIC_KEY='{{public_key}}';",
-				"GRANT ROLE myrole TO USER {{username}};",
+				"GRANT ROLE public TO USER {{username}};",
 			},
 			keyBits: 4096,
 		},
@@ -176,6 +178,8 @@ func TestSnowflake_NewUser(t *testing.T) {
 				if test.expectErr {
 					require.Error(t, err)
 					return
+				} else if err != nil {
+					t.Fatalf("failed to create user %s", err)
 				}
 				defer attemptDropUser(connURL, createResp.Username)
 				assertPasswordCredentialsExist(t, connURL, createResp.Username, test.password)
@@ -187,6 +191,8 @@ func TestSnowflake_NewUser(t *testing.T) {
 				if test.expectErr {
 					require.Error(t, err)
 					return
+				} else if err != nil {
+					t.Fatalf("failed to create user %s", err)
 				}
 				defer attemptDropUser(connURL, createResp.Username)
 				assertRSAKeyPairCredentialsExist(t, connURL, createResp.Username, priv)
@@ -221,9 +227,10 @@ func TestSnowflake_RenewUser(t *testing.T) {
 			RoleName:    "test",
 		},
 		Statements: dbplugin.Statements{
-			Commands: []string{`
+			Commands: []string{
+				`
 				CREATE USER {{name}} PASSWORD = '{{password}}';
-				GRANT ROLE myrole TO USER {{name}};`,
+				GRANT ROLE public TO USER {{name}};`,
 			},
 		},
 		Password:   password,
@@ -231,6 +238,7 @@ func TestSnowflake_RenewUser(t *testing.T) {
 	}
 
 	createResp := dbtesting.AssertNewUser(t, db, createReq)
+	defer attemptDropUser(connURL, createResp.Username)
 
 	assertPasswordCredentialsExist(t, connURL, createResp.Username, password)
 
@@ -247,7 +255,6 @@ func TestSnowflake_RenewUser(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	assertPasswordCredentialsExist(t, connURL, createResp.Username, password)
-	attemptDropUser(connURL, createResp.Username)
 }
 
 func TestSnowflake_RevokeUser(t *testing.T) {
@@ -263,12 +270,14 @@ func TestSnowflake_RevokeUser(t *testing.T) {
 
 	tests := map[string]testCase{
 		"name revoke": {
-			deleteStatements: []string{`
+			deleteStatements: []string{
+				`
 				DROP USER {{name}};`,
 			},
 		},
 		"username revoke": {
-			deleteStatements: []string{`
+			deleteStatements: []string{
+				`
 				DROP USER {{username}};`,
 			},
 		},
@@ -296,9 +305,10 @@ func TestSnowflake_RevokeUser(t *testing.T) {
 					RoleName:    "test",
 				},
 				Statements: dbplugin.Statements{
-					Commands: []string{`
+					Commands: []string{
+						`
 						CREATE USER {{name}} PASSWORD = '{{password}}';
-						GRANT ROLE myrole TO USER {{name}};`,
+						GRANT ROLE public TO USER {{name}};`,
 					},
 				},
 				Password:   password,
@@ -346,15 +356,17 @@ func TestSnowflake_DefaultUsernameTemplate(t *testing.T) {
 			RoleName:    "test",
 		},
 		Statements: dbplugin.Statements{
-			Commands: []string{`
+			Commands: []string{
+				`
 				CREATE USER {{name}} PASSWORD = '{{password}}';
-				GRANT ROLE myrole TO USER {{name}};`,
+				GRANT ROLE public TO USER {{name}};`,
 			},
 		},
 		Password:   password,
 		Expiration: time.Now().Add(time.Hour),
 	}
 	createResp := dbtesting.AssertNewUser(t, db, createReq)
+	defer attemptDropUser(connURL, createResp.Username)
 
 	if createResp.Username == "" {
 		t.Fatalf("Missing username")
@@ -391,15 +403,17 @@ func TestSnowflake_CustomUsernameTemplate(t *testing.T) {
 			RoleName:    "test",
 		},
 		Statements: dbplugin.Statements{
-			Commands: []string{`
+			Commands: []string{
+				`
 				CREATE USER {{name}} PASSWORD = '{{password}}';
-				GRANT ROLE myrole TO USER {{name}};`,
+				GRANT ROLE public TO USER {{name}};`,
 			},
 		},
 		Password:   password,
 		Expiration: time.Now().Add(time.Hour),
 	}
 	createResp := dbtesting.AssertNewUser(t, db, createReq)
+	defer attemptDropUser(connURL, createResp.Username)
 
 	if createResp.Username == "" {
 		t.Fatalf("Missing username")
@@ -510,6 +524,9 @@ func assertPasswordCredentialsExist(t *testing.T, connString, username, password
 	}
 }
 
+// assertPasswordCredentialsDoNotExist is a helper to assert db creds were
+// properly removed. A successful assertion will result in the gosnowflake
+// default logger to output `msg="Authentication FAILED"` in the test logs.
 func assertPasswordCredentialsDoNotExist(t *testing.T, connString, username, password string) {
 	t.Helper()
 	err := verifyConnWithPasswordCredential(connString, username, password)
@@ -537,7 +554,6 @@ func assertRSAKeyPairCredentialsDoNotExist(t *testing.T, connString, username st
 // Needed to not clutter the shared instance with testing artifacts
 func attemptDropUser(connString, username string) {
 	db, err := sql.Open("snowflake", connString)
-
 	if err != nil {
 		log.Printf("connection issue: %s", err)
 	}
