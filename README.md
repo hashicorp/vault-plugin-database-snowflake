@@ -17,7 +17,7 @@ Feature requests can be submitted in the Issues section as well.
 
 ## Quick Links
 
- * [Database Secrets Engine for Snowflake - Docs](https://www.vaultproject.io/docs/secrets/databases/snowflake)
+ * [Database Secrets Engine for Snowflake - Docs](https://developer.hashicorp.com/vault/docs/secrets/databases/snowflake)
  * [Database Secrets Engine for Snowflake - API Docs](https://developer.hashicorp.com/vault/api-docs/secret/databases/snowflake)
  * [Snowflake Website](https://www.snowflake.com/)
  * [Vault Website](https://www.vaultproject.io)
@@ -43,3 +43,9 @@ can be provisioned manually to test.
 | SNOWFLAKE_DB         | optional: The DB you are restricting the connection to |
 | SNOWFLAKE_SCHEMA     | optional: The schema you are restricting the connection to |
 | SNOWFLAKE_WAREHOUSE  | optional: The warehouse you are restricting the connection to |
+
+To run the acceptance tests, invoke `make testacc`:
+
+```sh
+$ make testacc
+```
