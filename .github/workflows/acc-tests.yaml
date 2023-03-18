@@ -23,3 +23,5 @@ jobs:
         cache: true
     - name: Run Acceptance Tests
       run: make testacc
+    - name: Run Test Build
+      run: make dev
