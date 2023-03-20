@@ -8,14 +8,22 @@ permissions:
 jobs:
   run-acc-tests:
     runs-on: ubuntu-latest
-    env:
-      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-      SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
-      SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
-      SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
-      SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
-
     steps:
+    - name: Authenticate to Vault
+      id: vault-auth
+      run: vault-auth
+    - name: Fetch Secrets
+      id: secrets
+      uses: hashicorp/vault-action@v2.5.0
+      with:
+        url: ${{ steps.vault-auth.outputs.addr }}
+        caCertificate: ${{ steps.vault-auth.outputs.ca_certificate }}
+        token: ${{ steps.vault-auth.outputs.token }}
+        secrets:
+          kv/data/teams/vault-ecosystem/vault-plugin-database-snowflake SNOWFLAKE_ACCOUNT | SNOWFLAKE_ACCOUNT;
+          kv/data/teams/vault-ecosystem/vault-plugin-database-snowflake SNOWFLAKE_USER | SNOWFLAKE_USER;
+          kv/data/teams/vault-ecosystem/vault-plugin-database-snowflake SNOWFLAKE_PASSWORD | SNOWFLAKE_PASSWORD;
+
     - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
     - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
       with:
@@ -23,5 +31,9 @@ jobs:
         cache: true
     - name: Run Acceptance Tests
       run: make testacc
+      env:
+        SNOWFLAKE_ACCOUNT: ${{ steps.secrets.outputs.SNOWFLAKE_ACCOUNT }}
+        SNOWFLAKE_USER: ${{ steps.secrets.outputs.SNOWFLAKE_USER }}
+        SNOWFLAKE_PASSWORD: ${{ steps.secrets.outputs.SNOWFLAKE_PASSWORD }}
     - name: Run Test Build
       run: make dev
