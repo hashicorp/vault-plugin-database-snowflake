@@ -1,0 +1,25 @@
+name: Run Acceptance Tests
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  run-acc-tests:
+    runs-on: ubuntu-latest
+    env:
+      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+
+    steps:
+    - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+    - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
+      with:
+        go-version-file: .go-version
+        cache: true
+    - name: Run Acceptance Tests
+      run: make testacc
+    - name: Run Test Build
+      run: make dev
