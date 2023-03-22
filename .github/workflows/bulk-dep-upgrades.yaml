@@ -52,7 +52,8 @@ jobs:
             gh pr create \
             --head "$BRANCH_NAME" \
             --title "Automated dependency upgrades" \
-            --body "Full log: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            --body "Full log: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --reviewer "hashicorp/vault-ecosystem-applications"
           else
             echo "Pull request already exists, won't create a new one."
           fi
