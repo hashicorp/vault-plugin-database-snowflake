@@ -1,6 +1,7 @@
 name: Upgrade dependencies
 
 on:
+  workflow_dispatch:
   schedule:
     # Run once a day
     - cron: '0 0 * * *'
@@ -21,7 +22,7 @@ jobs:
           cache: true
           # Use a separate token to automatically execute checks on the resulting PR
           # https://github.com/peter-evans/create-pull-request/blob/main/docs/concepts-guidelines.md#triggering-further-workflow-runs
-          token: ${{ secrets.VAULT_ECO_GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upgrade Go dependencies
         run: |
@@ -44,7 +45,7 @@ jobs:
       - name: Open pull request if needed
         if: steps.changes.outputs.count > 0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.VAULT_ECO_GITHUB_TOKEN }}
         # Only open a PR if the branch is not attached to an existing one
         run: |
           PR=$(gh pr list --head "$BRANCH_NAME" --json number -q '.[0].number')
