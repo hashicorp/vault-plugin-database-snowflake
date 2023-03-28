@@ -9,7 +9,7 @@ jobs:
     # using `main` as the ref will keep your workflow up-to-date
     uses: hashicorp/vault-workflows-common/.github/workflows/bulk-dependency-updates.yaml@main
     secrets:
-      REPO_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO_GITHUB_TOKEN: ${{ secrets.VAULT_ECO_GITHUB_TOKEN }}
       VAULT_ECO_GITHUB_TOKEN: ${{ secrets.VAULT_ECO_GITHUB_TOKEN }}
     with:
       # either hashicorp/vault-ecosystem-applications or hashicorp/vault-ecosystem-foundations
