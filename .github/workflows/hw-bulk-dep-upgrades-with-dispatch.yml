@@ -11,5 +11,5 @@ jobs:
     with:
       # either hashicorp/vault-ecosystem-applications or hashicorp/vault-ecosystem-foundations
       reviewer-team: hashicorp/vault-ecosystem-applications
-      repository: ${{ github.repository }}
+      repository: vault-plugin-database-snowflake
       run-id: ${{ github.run_id }}
