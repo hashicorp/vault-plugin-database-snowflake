@@ -1,0 +1,15 @@
+name: Upgrade dependencies (dispatch variant)
+on:
+  workflow_dispatch:
+
+jobs:
+  upgrade:
+    # using `main` as the ref will keep your workflow up-to-date
+    uses: hashicorp/vault-workflows-common/.github/workflows/bulk-dependency-updates.yaml@add-update-plugin-check-workflow
+    secrets:
+      VAULT_ECO_GITHUB_TOKEN: ${{ secrets.VAULT_ECO_GITHUB_TOKEN }}
+    with:
+      # either hashicorp/vault-ecosystem-applications or hashicorp/vault-ecosystem-foundations
+      reviewer-team: hashicorp/vault-ecosystem-applications
+      repository: vault-plugin-database-snowflake
+      run-id: ${{ github.run_id }}
