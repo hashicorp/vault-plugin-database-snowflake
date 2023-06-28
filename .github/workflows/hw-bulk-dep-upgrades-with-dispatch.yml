@@ -1,4 +1,4 @@
-name: Upgrade dependencies
+name: Upgrade dependencies (dispatch variant)
 on:
   workflow_dispatch:
 
