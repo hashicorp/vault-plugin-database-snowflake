@@ -1,0 +1,18 @@
+name: Dispatch Vault CI On Branch
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        required: true
+        type: string
+        description: 'The git branch that we want Vault to fetch and run CI against.'
+
+jobs:
+  dispatch:
+    # using `main` as the ref will keep your workflow up-to-date
+    uses: hashicorp/vault-workflows-common/.github/workflows/dispatch-vault-ci.yaml@add-update-plugin-check-workflow
+    secrets:
+      VAULT_ECO_GITHUB_TOKEN: ${{ secrets.VAULT_ECO_GITHUB_TOKEN }}
+    with:
+      repository: ${{ github.repository }}
+      branch: $${ inputs.branch }}
