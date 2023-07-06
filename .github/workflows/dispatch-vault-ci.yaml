@@ -15,4 +15,4 @@ jobs:
       VAULT_ECO_GITHUB_TOKEN: ${{ secrets.VAULT_ECO_GITHUB_TOKEN }}
     with:
       repository: ${{ github.repository }}
-      branch: $${ inputs.branch }}
+      branch: ${{ inputs.branch }}
