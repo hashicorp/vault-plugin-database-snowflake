@@ -7,6 +7,6 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
 	github.com/hashicorp/vault/sdk v0.9.2
-	github.com/snowflakedb/gosnowflake v1.6.23
+	github.com/snowflakedb/gosnowflake v1.6.24
 	github.com/stretchr/testify v1.8.4
 )
