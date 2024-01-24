@@ -1,6 +1,6 @@
 module github.com/hashicorp/vault-plugin-database-snowflake
 
-go 1.15
+go 1.16
 
 require (
 	github.com/hashicorp/errwrap v1.1.0
@@ -8,7 +8,6 @@ require (
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
 	github.com/hashicorp/vault/sdk v0.5.3
 	github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d // indirect
-	github.com/snowflakedb/gosnowflake v1.6.24
-	github.com/stretchr/testify v1.8.1
-	google.golang.org/genproto v0.0.0-20210630183607-d20f26d13c79 // indirect
+	github.com/snowflakedb/gosnowflake v1.7.2
+	github.com/stretchr/testify v1.8.4
 )
