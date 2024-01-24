@@ -1,5 +1,10 @@
 ## Unreleased
 
+## 0.9.2
+### Jan 23, 2024
+CHANGES:
+* downgrade go.mod go version from 1.21 to 1.20 [GH-xx](https://github.com/hashicorp/vault-plugin-database-snowflake/pull/xx)
+
 ## 0.9.1
 ### Jan 23, 2024
 IMPROVEMENTS:
