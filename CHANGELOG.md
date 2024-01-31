@@ -1,5 +1,10 @@
 ## Unreleased
 
+## 0.10.0
+### Jan 31, 2024
+CHANGES:
+* bump go.mod go version from 1.20 to 1.21 [GH-80](https://github.com/hashicorp/vault-plugin-database-snowflake/pull/80)
+
 ## 0.9.2
 ### Jan 24, 2024
 CHANGES:
