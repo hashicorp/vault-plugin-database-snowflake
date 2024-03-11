@@ -1,5 +1,10 @@
 ## Unreleased
 
+IMPROVEMENTS:
+* Updated dependencies [GH-82](https://github.com/hashicorp/vault-plugin-database-snowflake/pull/82):
+  * `github.com/hashicorp/vault/sdk` v0.10.2 -> v0.11.0
+  * `github.com/snowflakedb/gosnowflake` v1.7.2 -> v1.8.0
+
 ## 0.10.0
 ### Jan 31, 2024
 CHANGES:
