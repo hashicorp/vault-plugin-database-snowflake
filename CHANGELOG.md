@@ -1,6 +1,10 @@
 ## Unreleased
 
+## 0.11.0
+### May 20, 2024
+
 IMPROVEMENTS:
+* Updated dependencies (https://github.com/hashicorp/vault-plugin-database-snowflake/pull/90)
 * Updated dependencies [GH-82](https://github.com/hashicorp/vault-plugin-database-snowflake/pull/82):
   * `github.com/hashicorp/vault/sdk` v0.10.2 -> v0.11.0
   * `github.com/jackc/pgx/v4` v4.18.1 -> v4.18.2
