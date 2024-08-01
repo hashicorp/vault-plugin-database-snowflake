@@ -1,4 +1,8 @@
 ## Unreleased
+## 0.9.3
+### August 1, 2024
+CHANGES:
+* bump gosnowflake driver to v1.9.0 [GH-94](https://github.com/hashicorp/vault-plugin-database-snowflake/pull/94)
 
 ## 0.9.2
 ### Jan 24, 2024
