@@ -427,6 +427,60 @@ func TestSnowflake_CustomUsernameTemplate(t *testing.T) {
 	require.Regexp(t, `^test_[a-zA-Z0-9]{10}$`, createResp.Username)
 }
 
+func TestParseSnowflakeFieldsFromURL(t *testing.T) {
+
+	testcases := []struct {
+		name            string
+		url             string
+		expectedAccount string
+		expectedDB      string
+		wantErr         bool
+		expectedErr     string
+	}{
+		{
+			name:            "simple",
+			url:             "account.snowflakecomputing.com/db",
+			wantErr:         false,
+			expectedAccount: "account",
+			expectedDB:      "db",
+		},
+		{
+			name:            "complex",
+			url:             "dev.org_v2.1.5-us-eas2-1.snowflakecomputing.com/secret-db.name/withslash",
+			wantErr:         false,
+			expectedAccount: "dev.org_v2.1.5-us-eas2-1",
+			expectedDB:      "secret-db.name/withslash",
+		},
+		{
+			name:        "invalid",
+			url:         "invalid-url",
+			wantErr:     true,
+			expectedErr: "no matches found",
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			name, idx, err := parseSnowflakeFieldsFromURL(tc.url)
+			if tc.wantErr && (err == nil) {
+				t.Fatalf("wanted error %v, got nil", tc.wantErr)
+			}
+
+			if tc.wantErr && (err.Error() != tc.expectedErr) {
+				t.Fatalf("got error %v, wantErr %v", err, tc.wantErr)
+			}
+
+			if name != tc.expectedAccount {
+				t.Fatalf("got %s, want %s", name, tc.expectedAccount)
+			}
+
+			if idx != tc.expectedDB {
+				t.Fatalf("got %s, want %s", idx, tc.expectedDB)
+			}
+		})
+	}
+}
+
 func dsnString() (string, error) {
 	user := os.Getenv(envVarSnowflakeUser)
 	password := os.Getenv(envVarSnowflakePassword)

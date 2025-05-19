@@ -5,9 +5,16 @@ package snowflake
 
 import (
 	"context"
+	"crypto/rsa"
+	"crypto/x509"
 	"database/sql"
+	"encoding/pem"
+	"errors"
 	"fmt"
+	"github.com/snowflakedb/gosnowflake"
 	"math"
+	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -39,6 +46,11 @@ drop user if exists {{name}};
 	defaultUserNameTemplate = `{{ printf "v_%s_%s_%s_%s" (.DisplayName | truncate 32) (.RoleName | truncate 32) (random 20) (unix_time) | truncate 255 | replace "-" "_" }}`
 )
 
+var ErrInvalidSnowflakeURL = errors.New("invalid connection URL received; expected format <account_name>.snowflakecomputing.com/<db_name>")
+
+// format <account_name>.snowflakecomputing.com/<db_name>
+var accountAndDBNameFromConnURLRegex = regexp.MustCompile("^(.+)\\.snowflakecomputing.com/(.+)$")
+
 var _ dbplugin.Database = (*SnowflakeSQL)(nil)
 
 func New() (interface{}, error) {
@@ -69,6 +81,9 @@ type SnowflakeSQL struct {
 	*connutil.SQLConnectionProducer
 	sync.RWMutex
 
+	// PrivateKey is a path to the private key file
+	PrivateKey string
+
 	usernameProducer template.StringTemplate
 }
 
@@ -82,7 +97,7 @@ func (s *SnowflakeSQL) getConnection(ctx context.Context) (*sql.DB, error) {
 		return nil, err
 	}
 
-	return db.(*sql.DB), nil
+	return db, nil
 }
 
 func (s *SnowflakeSQL) Initialize(ctx context.Context, req dbplugin.InitializeRequest) (dbplugin.InitializeResponse, error) {
@@ -119,6 +134,80 @@ func (s *SnowflakeSQL) Initialize(ctx context.Context, req dbplugin.InitializeRe
 	})
 
 	return resp, nil
+}
+
+func (s *SnowflakeSQL) Connection(ctx context.Context) (*sql.DB, error) {
+	if s.Password != "" {
+		// log deprecation message
+	}
+
+	// Parse required fields
+	accountName, dbName, err := parseSnowflakeFieldsFromURL(s.ConnectionURL)
+	if err != nil {
+		return nil, err
+	}
+
+	privateKey, err := getPrivateKey(s.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	snowflakeConfig := &gosnowflake.Config{
+		Account:       accountName,
+		Database:      dbName,
+		User:          s.Username,
+		Authenticator: gosnowflake.AuthTypeJwt,
+		PrivateKey:    privateKey,
+	}
+	connector := gosnowflake.NewConnector(gosnowflake.SnowflakeDriver{}, *snowflakeConfig)
+
+	return sql.OpenDB(connector), nil
+}
+
+// parseSnowflakeFieldsFromURL uses a regex to extract account and DB
+// info from a connectionURL
+func parseSnowflakeFieldsFromURL(connectionURL string) (string, string, error) {
+	if !accountAndDBNameFromConnURLRegex.MatchString(connectionURL) {
+		return "", "", fmt.Errorf("no matches found")
+	}
+	res := accountAndDBNameFromConnURLRegex.FindStringSubmatch(connectionURL)
+	if len(res) != 3 {
+		return "", "", fmt.Errorf("unexpected number of matches (%d) for account and DB name", len(res))
+	}
+	return res[1], res[2], nil
+}
+
+// Open and decode the private key file
+func getPrivateKey(privateKey string) (*rsa.PrivateKey, error) {
+	var block *pem.Block
+
+	// If the provided data was the key itself, use it directly.
+	if strings.HasPrefix(privateKey, "-----BEGIN PRIVATE KEY-----") {
+		block, _ = pem.Decode([]byte(privateKey))
+	} else {
+		keyFile, err := os.ReadFile(privateKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read private key file: %w", err)
+		}
+
+		block, _ = pem.Decode(keyFile)
+	}
+
+	if block == nil || block.Type != "PRIVATE KEY" {
+		return nil, fmt.Errorf("failed to decode the private key value")
+	}
+
+	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key to PKCS8: %w", err)
+	}
+
+	p, ok := key.(*rsa.PrivateKey)
+	if !ok {
+		return nil, fmt.Errorf("private key was parsed into an unexpected type")
+	}
+
+	return p, nil
 }
 
 func (s *SnowflakeSQL) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (dbplugin.NewUserResponse, error) {
