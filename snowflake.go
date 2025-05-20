@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	"github.com/hashicorp/vault/sdk/database/helper/connutil"
 	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
 	"github.com/hashicorp/vault/sdk/helper/dbtxn"
 	"github.com/hashicorp/vault/sdk/helper/template"
@@ -23,7 +22,8 @@ import (
 )
 
 const (
-	snowflakeSQLTypeName     = "snowflake"
+	snowflakeSQLTypeName = "snowflake"
+
 	defaultSnowflakeRenewSQL = `
 alter user {{name}} set DAYS_TO_EXPIRY = {{expiration}};
 `
@@ -48,25 +48,19 @@ func New() (interface{}, error) {
 	return dbType, nil
 }
 
-func (s *SnowflakeSQL) secretValues() map[string]string {
-	return map[string]string{
-		s.Password: "[password]",
-	}
-}
-
 func new() *SnowflakeSQL {
-	connProducer := &connutil.SQLConnectionProducer{}
+	connProducer := &snowflakeConnectionProducer{}
 	connProducer.Type = snowflakeSQLTypeName
 
 	db := &SnowflakeSQL{
-		SQLConnectionProducer: connProducer,
+		snowflakeConnectionProducer: connProducer,
 	}
 
 	return db
 }
 
 type SnowflakeSQL struct {
-	*connutil.SQLConnectionProducer
+	*snowflakeConnectionProducer
 	sync.RWMutex
 
 	usernameProducer template.StringTemplate
@@ -86,7 +80,7 @@ func (s *SnowflakeSQL) getConnection(ctx context.Context) (*sql.DB, error) {
 }
 
 func (s *SnowflakeSQL) Initialize(ctx context.Context, req dbplugin.InitializeRequest) (dbplugin.InitializeResponse, error) {
-	err := s.SQLConnectionProducer.Initialize(ctx, req.Config, req.VerifyConnection)
+	err := s.snowflakeConnectionProducer.Initialize(ctx, req.Config, req.VerifyConnection)
 	if err != nil {
 		return dbplugin.InitializeResponse{}, err
 	}
