@@ -76,7 +76,7 @@ func TestSnowflakeSQL_Initialize(t *testing.T) {
 		t.Fatalf("Actual: %#v\nExpected: %#v", resp.Config, expectedConfig)
 	}
 
-	connProducer := db.SQLConnectionProducer
+	connProducer := db.snowflakeConnectionProducer
 	if !connProducer.Initialized {
 		t.Fatal("Database should be initialized")
 	}
@@ -563,7 +563,6 @@ func attemptDropUser(connString, username string) {
 
 	defer db.Close()
 	_, err = db.Exec(fmt.Sprintf("DROP USER %s", username))
-
 	if err != nil {
 		log.Printf("query issue: %s", err)
 	}
