@@ -40,7 +40,7 @@ private key path. Default values for plugin name and directory from the
 Makefile will be used if arguments aren't provided.
 
 ```sh
-$ PLUGIN_NAME=vault-plugin-secrets-azure \
+$ PLUGIN_NAME=vault-plugin-database-snowflake \
   PLUGIN_DIR=$GOPATH/vault-plugins \
   CONNECTION_URL=foo.snowflakecomputing.com/BAR \
   PRIVATE_KEY=/path/to/private/key/file \
