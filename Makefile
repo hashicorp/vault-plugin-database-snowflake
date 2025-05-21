@@ -54,6 +54,7 @@ configure: dev
 	$(PLUGIN_DIR) \
 	$(PLUGIN_NAME) \
 	$(CONNECTION_URL) \
-	$(PRIVATE_KEY)
+	$(PRIVATE_KEY) \
+	$(SNOWFLAKE_USERNAME)
 
 .PHONY: bin default generate test vet bootstrap fmt fmtcheck

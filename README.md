@@ -44,6 +44,7 @@ $ PLUGIN_NAME=vault-plugin-database-snowflake \
   PLUGIN_DIR=$GOPATH/vault-plugins \
   CONNECTION_URL=foo.snowflakecomputing.com/BAR \
   PRIVATE_KEY=/path/to/private/key/file \
+  SNOWFLAKE_USERNAME=user1 \
   make configure
 ```
 

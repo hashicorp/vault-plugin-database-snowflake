@@ -6,12 +6,14 @@ PLUGIN_DIR=$1
 PLUGIN_NAME=$2
 CONNECTION_URL=$3
 PRIVATE_KEY=$4
+SNOWFLAKE_USERNAME=$5
 
 # validate these are set
 [ "${PLUGIN_DIR:?}" ]
 [ "${PLUGIN_NAME:?}" ]
 [ "${CONNECTION_URL:?}" ]
 [ "${PRIVATE_KEY:?}" ]
+[ "${SNOWFLAKE_USERNAME:?}" ]
 
 CONFIG=snowflake
 ROLE=test-role
@@ -40,7 +42,7 @@ vault write database/config/${CONFIG} \
     allowed_roles=${ROLE} \
     connection_url=${CONNECTION_URL} \
     private_key=${PRIVATE_KEY} \
-    username='hashicorpvault'
+    username=${SNOWFLAKE_USERNAME}
 
 vault write database/roles/${ROLE} \
     db_name=${CONFIG} \
