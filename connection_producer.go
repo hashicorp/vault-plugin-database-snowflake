@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"strings"
 	"sync"
 
 	"github.com/hashicorp/vault/sdk/database/helper/connutil"
@@ -26,8 +25,6 @@ var (
 )
 
 type snowflakeConnectionProducer struct {
-	//*connutil.SQLConnectionProducer
-
 	ConnectionURL         string `json:"connection_url"`
 	MaxOpenConnections    int    `json:"max_open_connections"`
 	MaxIdleConnections    int    `json:"max_idle_connections"`
@@ -73,8 +70,8 @@ func (c *snowflakeConnectionProducer) Init(ctx context.Context, initConfig map[s
 		return nil, err
 	}
 
-	if len(c.Password) == 0 {
-		// Warning
+	if len(c.Password) > 0 {
+		// Return an error here once Snowflake ends support for password auth.
 	}
 
 	c.Initialized = true
@@ -165,7 +162,6 @@ func openSnowflake(connectionURL, username, providedPrivateKey string) (*sql.DB,
 		User:          username,
 		Authenticator: gosnowflake.AuthTypeJwt,
 		PrivateKey:    privateKey,
-		// Params:        make(map[string]*string),
 	}
 	connector := gosnowflake.NewConnector(gosnowflake.SnowflakeDriver{}, *snowflakeConfig)
 
@@ -190,15 +186,17 @@ func parseSnowflakeFieldsFromURL(connectionURL string) (string, string, error) {
 func getPrivateKey(providedPrivateKey string) (*rsa.PrivateKey, error) {
 	var block *pem.Block
 
-	// If the provided data was the key itself, use it directly.
-	if strings.HasPrefix(providedPrivateKey, "-----BEGIN PRIVATE KEY-----") {
-		block, _ = pem.Decode([]byte(providedPrivateKey))
-	} else {
-		keyFile, err := os.ReadFile(providedPrivateKey)
-		if err != nil {
+	// Try loading a file with the provided private key field first. If the the file doesn't
+	// exist, assume they provided the raw key and decode it. Otherwise return an error. If there
+	// was no error, then they likely provided a file path to a private key.
+	keyFile, err := os.ReadFile(providedPrivateKey)
+	if err != nil {
+		if os.IsNotExist(err) {
+			block, _ = pem.Decode([]byte(providedPrivateKey))
+		} else {
 			return nil, fmt.Errorf("failed to read private key file: %w", err)
 		}
-
+	} else {
 		block, _ = pem.Decode(keyFile)
 	}
 
