@@ -187,21 +187,20 @@ func getPrivateKey(providedPrivateKey string) (*rsa.PrivateKey, error) {
 	var block *pem.Block
 
 	// Try loading a file with the provided private key field first. If the the file doesn't
-	// exist, assume they provided the raw key and decode it. Otherwise return an error. If there
-	// was no error, then they likely provided a file path to a private key.
+	// exist, assume they provided the raw key and decode it. If there was an error, then
+	// assume they provided a file path to a private key.
 	keyFile, err := os.ReadFile(providedPrivateKey)
-	if err != nil {
-		if os.IsNotExist(err) {
-			block, _ = pem.Decode([]byte(providedPrivateKey))
-		} else {
-			return nil, fmt.Errorf("failed to read private key file: %w", err)
-		}
+	if err != nil && os.IsNotExist(err) {
+		block, _ = pem.Decode([]byte(providedPrivateKey))
 	} else {
 		block, _ = pem.Decode(keyFile)
 	}
 
-	if block == nil || block.Type != "PRIVATE KEY" {
-		return nil, fmt.Errorf("failed to decode the private key value")
+	if block == nil {
+		return nil, fmt.Errorf("failed to read provided private_key")
+	}
+	if block.Type != "PRIVATE KEY" {
+		return nil, fmt.Errorf("failed to decode private key, expected type 'PRIVATE KEY', got '%s'", block.Type)
 	}
 
 	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
