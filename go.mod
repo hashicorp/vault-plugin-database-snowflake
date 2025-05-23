@@ -2,7 +2,7 @@ module github.com/hashicorp/vault-plugin-database-snowflake
 
 go 1.23.3
 
-toolchain go1.24.3
+toolchain go1.23.5
 
 require (
 	github.com/hashicorp/errwrap v1.1.0
