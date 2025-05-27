@@ -10,9 +10,14 @@ import (
 	"database/sql"
 	"encoding/pem"
 	"fmt"
+	"github.com/hashicorp/errwrap"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
+	"net/url"
 	"os"
 	"regexp"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/vault/sdk/database/helper/connutil"
 	"github.com/mitchellh/mapstructure"
@@ -25,26 +30,29 @@ var (
 )
 
 type snowflakeConnectionProducer struct {
-	ConnectionURL         string `json:"connection_url"`
-	MaxOpenConnections    int    `json:"max_open_connections"`
-	MaxIdleConnections    int    `json:"max_idle_connections"`
-	MaxConnectionLifetime string `json:"max_connection_lifetime"`
-	Username              string `json:"username"`
-	Password              string `json:"password"`
-	PrivateKey            string `json:"private_key"`
-	UsernameTemplate      string `json:"username_template"`
-	DisableEscaping       bool   `json:"disable_escaping"`
+	ConnectionURL            string      `json:"connection_url"`
+	MaxOpenConnections       int         `json:"max_open_connections"`
+	MaxIdleConnections       int         `json:"max_idle_connections"`
+	MaxConnectionLifetimeRaw interface{} `json:"max_connection_lifetime"`
+	Username                 string      `json:"username"`
+	Password                 string      `json:"password"`
+	PrivateKey               string      `json:"private_key"`
+	UsernameTemplate         string      `json:"username_template"`
+	DisableEscaping          bool        `json:"disable_escaping"`
 
-	Initialized bool
-	RawConfig   map[string]any
-	Type        string
-	snowflakeDB *sql.DB
+	Initialized           bool
+	RawConfig             map[string]any
+	Type                  string
+	maxConnectionLifetime time.Duration
+	snowflakeDB           *sql.DB
+	// TODO investigate two mutexes
 	sync.Mutex
 }
 
 func (c *snowflakeConnectionProducer) secretValues() map[string]string {
 	return map[string]string{
-		c.Password: "[password]",
+		c.Password:   "[password]",
+		c.PrivateKey: "[private_key]",
 	}
 }
 
@@ -70,8 +78,46 @@ func (c *snowflakeConnectionProducer) Init(ctx context.Context, initConfig map[s
 		return nil, err
 	}
 
+	if len(c.ConnectionURL) == 0 {
+		return nil, fmt.Errorf("connection_url cannot be empty")
+	}
+
 	if len(c.Password) > 0 {
 		// Return an error here once Snowflake ends support for password auth.
+		// TODO figure out how DB plugins can dispatch logs
+
+		username := c.Username
+		password := c.Password
+
+		if !c.DisableEscaping {
+			username = url.PathEscape(c.Username)
+			password = url.PathEscape(c.Password)
+		}
+
+		// Replace templated username and password in connection URL with actual values
+		c.ConnectionURL = dbutil.QueryHelper(c.ConnectionURL, map[string]string{
+			"username": username,
+			"password": password,
+		})
+	}
+
+	if c.MaxOpenConnections == 0 {
+		c.MaxOpenConnections = 4
+	}
+
+	if c.MaxIdleConnections == 0 {
+		c.MaxIdleConnections = c.MaxOpenConnections
+	}
+	if c.MaxIdleConnections > c.MaxOpenConnections {
+		c.MaxIdleConnections = c.MaxOpenConnections
+	}
+	if c.MaxConnectionLifetimeRaw == nil {
+		c.MaxConnectionLifetimeRaw = "0s"
+	}
+
+	c.maxConnectionLifetime, err = parseutil.ParseDurationSecond(c.MaxConnectionLifetimeRaw)
+	if err != nil {
+		return nil, errwrap.Wrapf("invalid max_connection_lifetime: {{err}}", err)
 	}
 
 	c.Initialized = true
@@ -118,8 +164,11 @@ func (c *snowflakeConnectionProducer) Connection(ctx context.Context) (interface
 	}
 
 	c.snowflakeDB = db
+	c.snowflakeDB.SetMaxOpenConns(c.MaxOpenConnections)
+	c.snowflakeDB.SetMaxIdleConns(c.MaxIdleConnections)
+	c.snowflakeDB.SetConnMaxLifetime(c.maxConnectionLifetime)
 
-	return db, nil
+	return c.snowflakeDB, nil
 }
 
 // close terminates the database connection without locking
