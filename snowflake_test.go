@@ -25,11 +25,13 @@ import (
 )
 
 const (
-	envVarSnowflakeAccount  = "SNOWFLAKE_ACCOUNT"
-	envVarSnowflakeUser     = "SNOWFLAKE_USER"
-	envVarSnowflakePassword = "SNOWFLAKE_PASSWORD"
-	envVarSnowflakeDatabase = "SNOWFLAKE_DATABASE"
-	envVarSnowflakeSchema   = "SNOWFLAKE_SCHEMA"
+	envVarSnowflakeAccount    = "SNOWFLAKE_ACCOUNT"
+	envVarSnowflakeUser       = "SNOWFLAKE_USER"
+	envVarSnowflakePassword   = "SNOWFLAKE_PASSWORD"
+	envVarSnowflakeDatabase   = "SNOWFLAKE_DATABASE"
+	envVarSnowflakeSchema     = "SNOWFLAKE_SCHEMA"
+	envVarSnowflakePrivateKey = "SNOWFLAKE_PRIVATE_KEY"
+	envVarSnowflakeURL        = "SNOWFLAKE_URL"
 
 	envVarRunAccTests = "VAULT_ACC"
 )
@@ -50,36 +52,75 @@ func TestSnowflakeSQL_Initialize(t *testing.T) {
 		t.SkipNow()
 	}
 
-	db := new()
-	defer dbtesting.AssertClose(t, db)
+	t.Run("userpass auth", func(t *testing.T) {
+		db := new()
+		defer dbtesting.AssertClose(t, db)
 
-	connURL, err := dsnString()
-	if err != nil {
-		t.Fatalf("failed to retrieve connection DSN: %s", err)
-	}
+		connURL, err := dsnString()
+		if err != nil {
+			t.Fatalf("failed to retrieve connection DSN: %s", err)
+		}
 
-	expectedConfig := map[string]interface{}{
-		"connection_url": connURL,
-		dbplugin.SupportedCredentialTypesKey: []interface{}{
-			dbplugin.CredentialTypePassword.String(),
-			dbplugin.CredentialTypeRSAPrivateKey.String(),
-		},
-	}
-	req := dbplugin.InitializeRequest{
-		Config: map[string]interface{}{
+		expectedConfig := map[string]interface{}{
 			"connection_url": connURL,
-		},
-		VerifyConnection: true,
-	}
-	resp := dbtesting.AssertInitialize(t, db, req)
-	if !reflect.DeepEqual(resp.Config, expectedConfig) {
-		t.Fatalf("Actual: %#v\nExpected: %#v", resp.Config, expectedConfig)
-	}
+			dbplugin.SupportedCredentialTypesKey: []interface{}{
+				dbplugin.CredentialTypePassword.String(),
+				dbplugin.CredentialTypeRSAPrivateKey.String(),
+			},
+		}
+		req := dbplugin.InitializeRequest{
+			Config: map[string]interface{}{
+				"connection_url": connURL,
+			},
+			VerifyConnection: true,
+		}
+		resp := dbtesting.AssertInitialize(t, db, req)
+		if !reflect.DeepEqual(resp.Config, expectedConfig) {
+			t.Fatalf("Actual: %#v\nExpected: %#v", resp.Config, expectedConfig)
+		}
 
-	connProducer := db.snowflakeConnectionProducer
-	if !connProducer.Initialized {
-		t.Fatal("Database should be initialized")
-	}
+		connProducer := db.snowflakeConnectionProducer
+		if !connProducer.Initialized {
+			t.Fatal("Database should be initialized")
+		}
+	})
+
+	t.Run("keypair auth", func(t *testing.T) {
+		db := new()
+		defer dbtesting.AssertClose(t, db)
+
+		connURL, pKey, user, err := getKeyPairAuthParameters()
+		if err != nil {
+			t.Fatalf("failed to retrieve connection URL: %s", err)
+		}
+		expectedConfig := map[string]interface{}{
+			"connection_url": connURL,
+			"username":       user,
+			"private_key":    pKey,
+			dbplugin.SupportedCredentialTypesKey: []interface{}{
+				dbplugin.CredentialTypePassword.String(),
+				dbplugin.CredentialTypeRSAPrivateKey.String(),
+			},
+		}
+		req := dbplugin.InitializeRequest{
+			Config: map[string]interface{}{
+				"connection_url": connURL,
+				"username":       user,
+				"private_key":    pKey,
+			},
+			VerifyConnection: true,
+		}
+		resp := dbtesting.AssertInitialize(t, db, req)
+		if !reflect.DeepEqual(resp.Config, expectedConfig) {
+			t.Fatalf("Actual: %#v\nExpected: %#v", resp.Config, expectedConfig)
+		}
+
+		connProducer := db.snowflakeConnectionProducer
+		if !connProducer.Initialized {
+			t.Fatal("Database should be initialized")
+		}
+	})
+
 }
 
 func TestSnowflake_NewUser(t *testing.T) {
@@ -460,6 +501,24 @@ func dsnString() (string, error) {
 	}
 
 	return dsnString, nil
+}
+
+func getKeyPairAuthParameters() (connURL string, pKey string, user string, err error) {
+	user = os.Getenv(envVarSnowflakeUser)
+	pKey = os.Getenv(envVarSnowflakePrivateKey)
+	connURL = os.Getenv(envVarSnowflakeURL)
+
+	if user == "" {
+		err = multierror.Append(err, fmt.Errorf("SNOWFLAKE_USER not set"))
+	}
+	if pKey == "" {
+		err = multierror.Append(err, fmt.Errorf("SNOWFLAKE_PRIVATE_KEY not set"))
+	}
+	if connURL == "" {
+		err = multierror.Append(err, fmt.Errorf("SNOWFLAKE_URL not set"))
+	}
+
+	return connURL, pKey, user, err
 }
 
 func verifyConnWithKeyPairCredential(connString, username string, private *rsa.PrivateKey) error {
