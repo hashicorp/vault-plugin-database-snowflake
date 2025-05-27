@@ -45,8 +45,7 @@ type snowflakeConnectionProducer struct {
 	Type                  string
 	maxConnectionLifetime time.Duration
 	snowflakeDB           *sql.DB
-	// TODO investigate two mutexes
-	sync.Mutex
+	mu                    sync.RWMutex
 }
 
 func (c *snowflakeConnectionProducer) secretValues() map[string]string {
@@ -57,8 +56,8 @@ func (c *snowflakeConnectionProducer) secretValues() map[string]string {
 }
 
 func (c *snowflakeConnectionProducer) Init(ctx context.Context, initConfig map[string]interface{}, verifyConnection bool) (saveConfig map[string]interface{}, err error) {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	c.RawConfig = initConfig
 
@@ -139,7 +138,7 @@ func (c *snowflakeConnectionProducer) Initialize(ctx context.Context, config map
 
 func (c *snowflakeConnectionProducer) Connection(ctx context.Context) (interface{}, error) {
 	// This is intentionally not grabbing the lock since the calling functions (e.g. CreateUser)
-	// are claiming it. (The locking patterns could be refactored to be more consistent/clear.)
+	// are claiming it.
 
 	if !c.Initialized {
 		return nil, connutil.ErrNotInitialized
@@ -179,14 +178,14 @@ func (c *snowflakeConnectionProducer) close() error {
 		}
 	}
 
-	c.snowflakeDB = nil
 	return nil
 }
 
 // Close terminates the database connection with locking
 func (c *snowflakeConnectionProducer) Close() error {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.snowflakeDB = nil
 
 	return c.close()
 }
@@ -249,7 +248,7 @@ func getPrivateKey(providedPrivateKey string) (*rsa.PrivateKey, error) {
 		return nil, fmt.Errorf("failed to read provided private_key")
 	}
 	if block.Type != "PRIVATE KEY" {
-		return nil, fmt.Errorf("failed to decode private key, expected type 'PRIVATE KEY', got '%s'", block.Type)
+		return nil, fmt.Errorf("unexpected private key type, expected type 'PRIVATE KEY', got '%s'", block.Type)
 	}
 
 	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
