@@ -7,6 +7,7 @@ toolchain go1.23.5
 require (
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.8
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
 	github.com/hashicorp/vault/sdk v0.14.1
 	github.com/mitchellh/mapstructure v1.5.0
@@ -78,7 +79,6 @@ require (
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2 // indirect
 	github.com/hashicorp/go-secure-stdlib/cryptoutil v0.1.0 // indirect
 	github.com/hashicorp/go-secure-stdlib/mlock v0.1.3 // indirect
-	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.8 // indirect
 	github.com/hashicorp/go-secure-stdlib/plugincontainer v0.4.1 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.6 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
