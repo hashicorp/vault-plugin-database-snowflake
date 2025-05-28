@@ -14,6 +14,7 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -25,13 +26,13 @@ import (
 )
 
 const (
-	envVarSnowflakeAccount    = "SNOWFLAKE_ACCOUNT"
-	envVarSnowflakeUser       = "SNOWFLAKE_USER"
-	envVarSnowflakePassword   = "SNOWFLAKE_PASSWORD"
-	envVarSnowflakeDatabase   = "SNOWFLAKE_DATABASE"
-	envVarSnowflakeSchema     = "SNOWFLAKE_SCHEMA"
-	envVarSnowflakePrivateKey = "SNOWFLAKE_PRIVATE_KEY"
-	envVarSnowflakeURL        = "SNOWFLAKE_URL"
+	envVarSnowflakeAccount        = "SNOWFLAKE_ACCOUNT"
+	envVarSnowflakeUser           = "SNOWFLAKE_USER"
+	envVarSnowflakePassword       = "SNOWFLAKE_PASSWORD"
+	envVarSnowflakeDatabase       = "SNOWFLAKE_DATABASE"
+	envVarSnowflakeSchema         = "SNOWFLAKE_SCHEMA"
+	envVarSnowflakePrivateKey     = "SNOWFLAKE_PRIVATE_KEY"
+	envVarSnowflakePrivateKeyFile = "SNOWFLAKE_PRIVATE_KEY_FILE"
 
 	envVarRunAccTests = "VAULT_ACC"
 )
@@ -85,18 +86,22 @@ func TestSnowflakeSQL_Initialize(t *testing.T) {
 		}
 	})
 
-	t.Run("keypair auth", func(t *testing.T) {
+	t.Run("keypair auth with raw private key", func(t *testing.T) {
 		db := new()
 		defer dbtesting.AssertClose(t, db)
 
-		connURL, pKey, user, err := getKeyPairAuthParameters()
+		connURL, rawPrivateKey, user, err := getKeyPairAuthParameters()
 		if err != nil {
 			t.Fatalf("failed to retrieve connection URL: %s", err)
 		}
+
+		// reading single-line raw key from the environment
+		// mis-formats newlines. fix before use
+		rawPrivateKey = strings.ReplaceAll(rawPrivateKey, "\\n", "\n")
 		expectedConfig := map[string]interface{}{
 			"connection_url": connURL,
 			"username":       user,
-			"private_key":    pKey,
+			"private_key":    rawPrivateKey,
 			dbplugin.SupportedCredentialTypesKey: []interface{}{
 				dbplugin.CredentialTypePassword.String(),
 				dbplugin.CredentialTypeRSAPrivateKey.String(),
@@ -106,7 +111,7 @@ func TestSnowflakeSQL_Initialize(t *testing.T) {
 			Config: map[string]interface{}{
 				"connection_url": connURL,
 				"username":       user,
-				"private_key":    pKey,
+				"private_key":    rawPrivateKey,
 			},
 			VerifyConnection: true,
 		}
@@ -120,6 +125,64 @@ func TestSnowflakeSQL_Initialize(t *testing.T) {
 			t.Fatal("Database should be initialized")
 		}
 	})
+
+}
+
+func TestSnowflakeSQL_Initialize_privateKeyFile(t *testing.T) {
+	if !runAcceptanceTests {
+		t.SkipNow()
+	}
+
+	user := os.Getenv(envVarSnowflakeUser)
+	pKey := os.Getenv(envVarSnowflakePrivateKeyFile)
+	account := os.Getenv(envVarSnowflakeAccount)
+	database := os.Getenv(envVarSnowflakeDatabase)
+
+	if user == "" {
+		t.Skipf("SNOWFLAKE_USER not set")
+	}
+	if pKey == "" {
+		t.Skipf("SNOWFLAKE_PRIVATE_KEY_FILE not set")
+	}
+	if account == "" {
+		t.Skipf("SNOWFLAKE_ACCOUNT not set")
+	}
+
+	if database == "" {
+		t.Skipf("SNOWFLAKE_DATABASE not set")
+	}
+
+	connURL := fmt.Sprintf("%s.snowflakecomputing.com/%s", user, database)
+
+	db := new()
+	defer dbtesting.AssertClose(t, db)
+
+	expectedConfig := map[string]interface{}{
+		"connection_url": connURL,
+		"username":       user,
+		"private_key":    pKey,
+		dbplugin.SupportedCredentialTypesKey: []interface{}{
+			dbplugin.CredentialTypePassword.String(),
+			dbplugin.CredentialTypeRSAPrivateKey.String(),
+		},
+	}
+	req := dbplugin.InitializeRequest{
+		Config: map[string]interface{}{
+			"connection_url": connURL,
+			"username":       user,
+			"private_key":    pKey,
+		},
+		VerifyConnection: true,
+	}
+	resp := dbtesting.AssertInitialize(t, db, req)
+	if !reflect.DeepEqual(resp.Config, expectedConfig) {
+		t.Fatalf("Actual: %#v\nExpected: %#v", resp.Config, expectedConfig)
+	}
+
+	connProducer := db.snowflakeConnectionProducer
+	if !connProducer.Initialized {
+		t.Fatal("Database should be initialized")
+	}
 
 }
 
