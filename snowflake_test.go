@@ -506,7 +506,8 @@ func dsnString() (string, error) {
 func getKeyPairAuthParameters() (connURL string, pKey string, user string, err error) {
 	user = os.Getenv(envVarSnowflakeUser)
 	pKey = os.Getenv(envVarSnowflakePrivateKey)
-	connURL = os.Getenv(envVarSnowflakeURL)
+	account := os.Getenv(envVarSnowflakeAccount)
+	database := os.Getenv(envVarSnowflakeDatabase)
 
 	if user == "" {
 		err = multierror.Append(err, fmt.Errorf("SNOWFLAKE_USER not set"))
@@ -514,9 +515,15 @@ func getKeyPairAuthParameters() (connURL string, pKey string, user string, err e
 	if pKey == "" {
 		err = multierror.Append(err, fmt.Errorf("SNOWFLAKE_PRIVATE_KEY not set"))
 	}
-	if connURL == "" {
-		err = multierror.Append(err, fmt.Errorf("SNOWFLAKE_URL not set"))
+	if account == "" {
+		err = multierror.Append(err, fmt.Errorf("SNOWFLAKE_ACCOUNT not set"))
 	}
+
+	if database == "" {
+		err = multierror.Append(err, fmt.Errorf("SNOWFLAKE_DATABASE not set"))
+	}
+
+	connURL = fmt.Sprintf("%s.snowflakecomputing.com/%s", user, database)
 
 	return connURL, pKey, user, err
 }

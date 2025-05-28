@@ -26,6 +26,7 @@ import (
 
 var (
 	ErrInvalidSnowflakeURL           = fmt.Errorf("invalid connection URL format, expect <account_name>.snowflakecomputing.com/<db_name>")
+	ErrInvalidPrivateKey             = fmt.Errorf("failed to read provided private_key")
 	accountAndDBNameFromConnURLRegex = regexp.MustCompile(`^(.+)\.snowflakecomputing.com/(.+)$`) // Expected format: <account_name>.snowflakecomputing.com/<db_name>
 )
 
@@ -234,19 +235,23 @@ func parseSnowflakeFieldsFromURL(connectionURL string) (string, string, error) {
 func getPrivateKey(providedPrivateKey string) (*rsa.PrivateKey, error) {
 	var block *pem.Block
 
-	// Try loading a file with the provided private key field first. If the the file doesn't
-	// exist, assume they provided the raw key and decode it. If there was an error, then
-	// assume they provided a file path to a private key.
+	// Try loading a file with the provided private key field first
 	keyFile, err := os.ReadFile(providedPrivateKey)
-	if err != nil && os.IsNotExist(err) {
+	if err != nil {
+		// If we are unable to read the file, assume they provided the raw key and decode it
 		block, _ = pem.Decode([]byte(providedPrivateKey))
+
 	} else {
 		block, _ = pem.Decode(keyFile)
 	}
 
 	if block == nil {
-		return nil, fmt.Errorf("failed to read provided private_key")
+		return nil, ErrInvalidPrivateKey
 	}
+
+	// key-type supplied in this part of the workflow has to be private.
+	// Public keys are set up directly on the server side in Snowflake.
+	// https://docs.snowflake.com/en/user-guide/key-pair-auth#assign-the-public-key-to-a-snowflake-user
 	if block.Type != "PRIVATE KEY" {
 		return nil, fmt.Errorf("unexpected private key type, expected type 'PRIVATE KEY', got '%s'", block.Type)
 	}
