@@ -1,5 +1,17 @@
 ## Unreleased
 
+## 0.12.1
+### May 27, 2025
+
+IMPROVEMENTS:
+* Updated dependencies (https://github.com/hashicorp/vault-plugin-database-snowflake/pull/113)
+
+## 0.12.0
+### Sept 4, 2024
+
+IMPROVEMENTS:
+* Updated dependencies (https://github.com/hashicorp/vault-plugin-database-snowflake/pull/92)
+
 ## 0.11.0
 ### May 20, 2024
 
