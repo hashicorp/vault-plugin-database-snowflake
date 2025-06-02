@@ -554,15 +554,15 @@ func dsnString() (string, error) {
 
 	dsnString := fmt.Sprintf("%s:%s@%s", user, password, account)
 
-	database := os.Getenv(envVarSnowflakeDatabase)
-	schema := os.Getenv(envVarSnowflakeSchema)
-
-	if database != "" {
-		dsnString += "/" + database
-		if schema != "" {
-			dsnString += "/" + schema
-		}
-	}
+	//database := os.Getenv(envVarSnowflakeDatabase)
+	//schema := os.Getenv(envVarSnowflakeSchema)
+	//
+	//if database != "" {
+	//	dsnString += "/" + database
+	//	if schema != "" {
+	//		dsnString += "/" + schema
+	//	}
+	//}
 
 	return dsnString, nil
 }
