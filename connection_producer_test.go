@@ -36,7 +36,7 @@ func TestOpenSnowflake(t *testing.T) {
 	var pemKey bytes.Buffer
 	pem.Encode(&pemKey, pemBlock)
 
-	db, err := openSnowflake("account.snowflakecomputing.com/db", "user", pemKey.String())
+	db, err := openSnowflake("account.snowflakecomputing.com/db", "user", pemKey.Bytes())
 	if err != nil {
 		t.Fatalf("Failed to open Snowflake connection: %v", err)
 	}
@@ -117,10 +117,6 @@ func TestGetPrivateKey(t *testing.T) {
 		providedPrivateKey string
 		wantErr            error
 	}{
-		"valid private key file": {
-			providedPrivateKey: fileName,
-			wantErr:            nil,
-		},
 		"valid private key string": {
 			providedPrivateKey: testPrivateKey,
 			wantErr:            nil,
@@ -140,7 +136,7 @@ func TestGetPrivateKey(t *testing.T) {
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			_, err := getPrivateKey(tt.providedPrivateKey)
+			_, err := getPrivateKey([]byte(tt.providedPrivateKey))
 
 			require.Equal(t, tt.wantErr, err)
 		})

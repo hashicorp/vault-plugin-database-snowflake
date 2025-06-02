@@ -9,12 +9,12 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"database/sql"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"log"
 	"os"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 
@@ -90,18 +90,19 @@ func TestSnowflakeSQL_Initialize(t *testing.T) {
 		db := new()
 		defer dbtesting.AssertClose(t, db)
 
-		connURL, rawPrivateKey, user, err := getKeyPairAuthParameters()
+		connURL, rawBase64PrivateKey, user, err := getKeyPairAuthParameters()
 		if err != nil {
 			t.Fatalf("failed to retrieve connection URL: %s", err)
 		}
+		privateKey, err := base64.StdEncoding.DecodeString(rawBase64PrivateKey)
+		if err != nil {
+			t.Fatalf("failed to decode private key: %s", err)
+		}
 
-		// reading single-line raw key from the environment
-		// mis-formats newlines. fix before use
-		rawPrivateKey = strings.ReplaceAll(rawPrivateKey, "\\n", "\n")
 		expectedConfig := map[string]interface{}{
 			"connection_url": connURL,
 			"username":       user,
-			"private_key":    rawPrivateKey,
+			"private_key":    privateKey,
 			dbplugin.SupportedCredentialTypesKey: []interface{}{
 				dbplugin.CredentialTypePassword.String(),
 				dbplugin.CredentialTypeRSAPrivateKey.String(),
@@ -111,7 +112,7 @@ func TestSnowflakeSQL_Initialize(t *testing.T) {
 			Config: map[string]interface{}{
 				"connection_url": connURL,
 				"username":       user,
-				"private_key":    rawPrivateKey,
+				"private_key":    privateKey,
 			},
 			VerifyConnection: true,
 		}

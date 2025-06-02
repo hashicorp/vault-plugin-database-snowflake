@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
 	"net/url"
-	"os"
 	"regexp"
 	"sync"
 	"time"
@@ -37,7 +36,7 @@ type snowflakeConnectionProducer struct {
 	MaxConnectionLifetimeRaw interface{} `json:"max_connection_lifetime"`
 	Username                 string      `json:"username"`
 	Password                 string      `json:"password"`
-	PrivateKey               string      `json:"private_key"`
+	PrivateKey               []byte      `json:"private_key"`
 	UsernameTemplate         string      `json:"username_template"`
 	DisableEscaping          bool        `json:"disable_escaping"`
 
@@ -51,8 +50,7 @@ type snowflakeConnectionProducer struct {
 
 func (c *snowflakeConnectionProducer) secretValues() map[string]string {
 	return map[string]string{
-		c.Password:   "[password]",
-		c.PrivateKey: "[private_key]",
+		c.Password: "[password]",
 	}
 }
 
@@ -151,15 +149,15 @@ func (c *snowflakeConnectionProducer) Connection(ctx context.Context) (interface
 
 	var db *sql.DB
 	var err error
-	if c.PrivateKey != "" {
+	if len(c.PrivateKey) > 0 {
 		db, err = openSnowflake(c.ConnectionURL, c.Username, c.PrivateKey)
 		if err != nil {
-			return nil, fmt.Errorf("error opening Snowflake connection: %w", err)
+			return nil, fmt.Errorf("error opening Snowflake connection using key-pair auth: %w", err)
 		}
 	} else {
 		db, err = sql.Open(snowflakeSQLTypeName, c.ConnectionURL)
 		if err != nil {
-			return nil, fmt.Errorf("failed to open connection: %w", err)
+			return nil, fmt.Errorf("error opening Snowflake connection using user-pass auth: %w", err)
 		}
 	}
 
@@ -192,8 +190,8 @@ func (c *snowflakeConnectionProducer) Close() error {
 }
 
 // Open the DB connection to Snowflake or return an error.
-func openSnowflake(connectionURL, username, providedPrivateKey string) (*sql.DB, error) {
-	// Parse thee connection_url for required fields. Should be of
+func openSnowflake(connectionURL, username string, providedPrivateKey []byte) (*sql.DB, error) {
+	// Parse the connection_url for required fields. Should be of
 	// the form <account_name>.snowflakecomputing.com/<db_name>
 	accountName, dbName, err := parseSnowflakeFieldsFromURL(connectionURL)
 	if err != nil {
@@ -232,19 +230,8 @@ func parseSnowflakeFieldsFromURL(connectionURL string) (string, string, error) {
 }
 
 // Open and decode the private key file
-func getPrivateKey(providedPrivateKey string) (*rsa.PrivateKey, error) {
-	var block *pem.Block
-
-	// Try loading a file with the provided private key field first
-	keyFile, err := os.ReadFile(providedPrivateKey)
-	if err != nil {
-		// If we are unable to read the file, assume they provided the raw key and decode it
-		block, _ = pem.Decode([]byte(providedPrivateKey))
-
-	} else {
-		block, _ = pem.Decode(keyFile)
-	}
-
+func getPrivateKey(providedPrivateKey []byte) (*rsa.PrivateKey, error) {
+	block, _ := pem.Decode(providedPrivateKey)
 	if block == nil {
 		return nil, ErrInvalidPrivateKey
 	}
