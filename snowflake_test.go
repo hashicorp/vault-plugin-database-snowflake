@@ -26,13 +26,12 @@ import (
 )
 
 const (
-	envVarSnowflakeAccount        = "SNOWFLAKE_ACCOUNT"
-	envVarSnowflakeUser           = "SNOWFLAKE_USER"
-	envVarSnowflakePassword       = "SNOWFLAKE_PASSWORD"
-	envVarSnowflakeDatabase       = "SNOWFLAKE_DATABASE"
-	envVarSnowflakeSchema         = "SNOWFLAKE_SCHEMA"
-	envVarSnowflakePrivateKey     = "SNOWFLAKE_PRIVATE_KEY"
-	envVarSnowflakePrivateKeyFile = "SNOWFLAKE_PRIVATE_KEY_FILE"
+	envVarSnowflakeAccount    = "SNOWFLAKE_ACCOUNT"
+	envVarSnowflakeUser       = "SNOWFLAKE_USER"
+	envVarSnowflakePassword   = "SNOWFLAKE_PASSWORD"
+	envVarSnowflakeDatabase   = "SNOWFLAKE_DATABASE"
+	envVarSnowflakeSchema     = "SNOWFLAKE_SCHEMA"
+	envVarSnowflakePrivateKey = "SNOWFLAKE_PRIVATE_KEY"
 
 	envVarRunAccTests = "VAULT_ACC"
 )
@@ -126,64 +125,6 @@ func TestSnowflakeSQL_Initialize(t *testing.T) {
 			t.Fatal("Database should be initialized")
 		}
 	})
-
-}
-
-func TestSnowflakeSQL_Initialize_privateKeyFile(t *testing.T) {
-	if !runAcceptanceTests {
-		t.SkipNow()
-	}
-
-	user := os.Getenv(envVarSnowflakeUser)
-	pKey := os.Getenv(envVarSnowflakePrivateKeyFile)
-	account := os.Getenv(envVarSnowflakeAccount)
-	database := os.Getenv(envVarSnowflakeDatabase)
-
-	if user == "" {
-		t.Skipf("SNOWFLAKE_USER not set")
-	}
-	if pKey == "" {
-		t.Skipf("SNOWFLAKE_PRIVATE_KEY_FILE not set")
-	}
-	if account == "" {
-		t.Skipf("SNOWFLAKE_ACCOUNT not set")
-	}
-
-	if database == "" {
-		t.Skipf("SNOWFLAKE_DATABASE not set")
-	}
-
-	connURL := fmt.Sprintf("%s.snowflakecomputing.com/%s", user, database)
-
-	db := new()
-	defer dbtesting.AssertClose(t, db)
-
-	expectedConfig := map[string]interface{}{
-		"connection_url": connURL,
-		"username":       user,
-		"private_key":    pKey,
-		dbplugin.SupportedCredentialTypesKey: []interface{}{
-			dbplugin.CredentialTypePassword.String(),
-			dbplugin.CredentialTypeRSAPrivateKey.String(),
-		},
-	}
-	req := dbplugin.InitializeRequest{
-		Config: map[string]interface{}{
-			"connection_url": connURL,
-			"username":       user,
-			"private_key":    pKey,
-		},
-		VerifyConnection: true,
-	}
-	resp := dbtesting.AssertInitialize(t, db, req)
-	if !reflect.DeepEqual(resp.Config, expectedConfig) {
-		t.Fatalf("Actual: %#v\nExpected: %#v", resp.Config, expectedConfig)
-	}
-
-	connProducer := db.snowflakeConnectionProducer
-	if !connProducer.Initialized {
-		t.Fatal("Database should be initialized")
-	}
 
 }
 
@@ -553,16 +494,6 @@ func dsnString() (string, error) {
 	}
 
 	dsnString := fmt.Sprintf("%s:%s@%s", user, password, account)
-
-	//database := os.Getenv(envVarSnowflakeDatabase)
-	//schema := os.Getenv(envVarSnowflakeSchema)
-	//
-	//if database != "" {
-	//	dsnString += "/" + database
-	//	if schema != "" {
-	//		dsnString += "/" + schema
-	//	}
-	//}
 
 	return dsnString, nil
 }

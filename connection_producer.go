@@ -11,6 +11,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/hashicorp/errwrap"
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
 	"net/url"
@@ -44,6 +45,7 @@ type snowflakeConnectionProducer struct {
 	RawConfig             map[string]any
 	Type                  string
 	maxConnectionLifetime time.Duration
+	logger                log.Logger
 	snowflakeDB           *sql.DB
 	mu                    sync.RWMutex
 }
@@ -59,6 +61,10 @@ func (c *snowflakeConnectionProducer) Init(ctx context.Context, initConfig map[s
 	defer c.mu.Unlock()
 
 	c.RawConfig = initConfig
+
+	c.logger = log.New(&log.LoggerOptions{
+		Level: log.Trace,
+	})
 
 	decoderConfig := &mapstructure.DecoderConfig{
 		Result:           c,
@@ -82,7 +88,10 @@ func (c *snowflakeConnectionProducer) Init(ctx context.Context, initConfig map[s
 
 	if len(c.Password) > 0 {
 		// Return an error here once Snowflake ends support for password auth.
-		// TODO figure out how DB plugins can dispatch logs
+		c.logger.Trace(fmt.Sprintf(`[DEPRECATED] Single-factor password authentication is deprecated in Snowflake and will
+be removed by November 2025. Key pair authentication will be required after this date. Please
+see the Vault documentation for details on the removal of this feature. More information is
+available at https://www.snowflake.com/en/blog/blocking-single-factor-password-authentification`))
 
 		username := c.Username
 		password := c.Password
