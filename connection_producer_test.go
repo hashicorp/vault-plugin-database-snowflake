@@ -9,9 +9,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
-	random "math/rand"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -44,6 +41,8 @@ func TestOpenSnowflake(t *testing.T) {
 	require.NotNil(t, db.Stats())
 }
 
+// TestParseSnowflakeFieldsFromURL validates that URL
+// parsing for keypair authentication works as expected
 func TestParseSnowflakeFieldsFromURL(t *testing.T) {
 	tests := map[string]struct {
 		connectionURL string
@@ -99,20 +98,9 @@ func TestParseSnowflakeFieldsFromURL(t *testing.T) {
 	}
 }
 
+// TestGetPrivateKey ensures reading private
+// keys works as expected for multiple cases
 func TestGetPrivateKey(t *testing.T) {
-	fileName := fmt.Sprintf("%s.pem", RandomWithPrefix("test"))
-	file, err := os.Create(fileName)
-	if err != nil {
-		t.Fatalf("Failed to create private key file: %v", err)
-	}
-	defer file.Close()
-	defer os.Remove(fileName)
-
-	// Write content to the file
-	_, err = file.Write([]byte(testPrivateKey))
-	if err != nil {
-		t.Fatalf("Failed to write to file: %v", err)
-	}
 	tests := map[string]struct {
 		providedPrivateKey string
 		wantErr            error
@@ -141,12 +129,6 @@ func TestGetPrivateKey(t *testing.T) {
 			require.Equal(t, tt.wantErr, err)
 		})
 	}
-}
-
-// RandomWithPrefix is used to generate a unique name with a prefix, for
-// randomizing names in acceptance tests
-func RandomWithPrefix(name string) string {
-	return fmt.Sprintf("%s-%d", name, random.Int())
 }
 
 // Used in tests. Original ref in Vault:

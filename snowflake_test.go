@@ -47,6 +47,9 @@ func connUrl(t *testing.T) string {
 	return connURL
 }
 
+// TestSnowflakeSQL_Initialize ensures initializing the Snowflake
+// DB works as expected for both user-pass and keypair authentication
+// scenarios
 func TestSnowflakeSQL_Initialize(t *testing.T) {
 	if !runAcceptanceTests {
 		t.SkipNow()
@@ -85,6 +88,9 @@ func TestSnowflakeSQL_Initialize(t *testing.T) {
 		}
 	})
 
+	// the environment variable SNOWFLAKE_PRIVATE_KEY in CI
+	// is a base64 encoded string. As such, this test expects the
+	// input for the variable to be base64 encoded
 	t.Run("keypair auth with raw private key", func(t *testing.T) {
 		db := new()
 		defer dbtesting.AssertClose(t, db)
@@ -93,6 +99,8 @@ func TestSnowflakeSQL_Initialize(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to retrieve connection URL: %s", err)
 		}
+
+		// decode base64 encoded private key from environment
 		privateKey, err := base64.StdEncoding.DecodeString(rawBase64PrivateKey)
 		if err != nil {
 			t.Fatalf("failed to decode private key: %s", err)
