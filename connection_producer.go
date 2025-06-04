@@ -52,7 +52,8 @@ type snowflakeConnectionProducer struct {
 
 func (c *snowflakeConnectionProducer) secretValues() map[string]string {
 	return map[string]string{
-		c.Password: "[password]",
+		c.Password:           "[password]",
+		string(c.PrivateKey): "[private_key]",
 	}
 }
 
@@ -62,9 +63,7 @@ func (c *snowflakeConnectionProducer) Init(ctx context.Context, initConfig map[s
 
 	c.RawConfig = initConfig
 
-	c.logger = log.New(&log.LoggerOptions{
-		Level: log.Trace,
-	})
+	c.logger = log.New(&log.LoggerOptions{})
 
 	decoderConfig := &mapstructure.DecoderConfig{
 		Result:           c,
@@ -88,10 +87,8 @@ func (c *snowflakeConnectionProducer) Init(ctx context.Context, initConfig map[s
 
 	if len(c.Password) > 0 {
 		// Return an error here once Snowflake ends support for password auth.
-		c.logger.Trace(fmt.Sprintf(`[DEPRECATED] Single-factor password authentication is deprecated in Snowflake and will
-be removed by November 2025. Key pair authentication will be required after this date. Please
-see the Vault documentation for details on the removal of this feature. More information is
-available at https://www.snowflake.com/en/blog/blocking-single-factor-password-authentification`))
+		c.logger.Warn("[DEPRECATED] Single-factor password authentication is deprecated in Snowflake and will be removed by November 2025. " +
+			"Key pair authentication will be required after this date.")
 
 		username := c.Username
 		password := c.Password
