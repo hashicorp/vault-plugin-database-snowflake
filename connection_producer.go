@@ -27,7 +27,7 @@ import (
 var (
 	ErrInvalidSnowflakeURL           = fmt.Errorf("invalid connection URL format, expect <account_name>.snowflakecomputing.com/<db_name>")
 	ErrInvalidPrivateKey             = fmt.Errorf("failed to read provided private_key")
-	accountAndDBNameFromConnURLRegex = regexp.MustCompile(`^(.+)\.snowflakecomputing.com/(.+)$`) // Expected format: <account_name>.snowflakecomputing.com/<db_name>
+	accountAndDBNameFromConnURLRegex = regexp.MustCompile(`^(.+)\.snowflakecomputing\.com/(.+)$`) // Expected format: <account_name>.snowflakecomputing.com/<db_name>
 )
 
 type snowflakeConnectionProducer struct {
