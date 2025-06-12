@@ -86,6 +86,12 @@ func TestParseSnowflakeFieldsFromURL(t *testing.T) {
 			wantDB:        "",
 			wantErr:       ErrInvalidSnowflakeURL,
 		},
+		"escape dots": {
+			connectionURL: "account.snowflakecomputingXcom/db",
+			wantAccount:   "",
+			wantDB:        "",
+			wantErr:       ErrInvalidSnowflakeURL,
+		},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
