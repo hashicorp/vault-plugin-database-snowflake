@@ -7,35 +7,35 @@
 
 IMPROVEMENTS:
 
-* Added key-pair auth support for database configuration in Vault 1.20.x (https://github.com/hashicorp/vault-plugin-database-snowflake/pull/109)
+* Added key-pair auth support for database configuration in Vault 1.20.x (https://github.com/hashicorp/vault-plugin-database-snowflake/pull/116)
 
 ## 0.13.2
 ### June 5, 2025
 
 IMPROVEMENTS:
 
-* Added key-pair auth support for database configuration in Vault 1.19.6 (https://github.com/hashicorp/vault-plugin-database-snowflake/pull/109)
+* Added key-pair auth support for database configuration in Vault 1.19.6 (https://github.com/hashicorp/vault-plugin-database-snowflake/pull/117)
 
 ## 0.12.2
 ### June 5, 2025
 
 IMPROVEMENTS:
 
-* Added key-pair auth support for database configuration in Vault 1.18.11 Enterprise (https://github.com/hashicorp/vault-plugin-database-snowflake/pull/109)
+* Added key-pair auth support for database configuration in Vault 1.18.11 Enterprise (https://github.com/hashicorp/vault-plugin-database-snowflake/pull/118)
 
 ## 0.11.2
 ### June 5, 2025
 
 IMPROVEMENTS:
 
-* Added key-pair auth support for database configuration in Vault 1.17.18 Enterprise (https://github.com/hashicorp/vault-plugin-database-snowflake/pull/109)
+* Added key-pair auth support for database configuration in Vault 1.17.18 Enterprise (https://github.com/hashicorp/vault-plugin-database-snowflake/pull/119)
 
 ## 0.10.3
 ### June 5, 2025
 
 IMPROVEMENTS:
 
-* Added key-pair auth support for database configuration in Vault 1.16.21 Enterprise (https://github.com/hashicorp/vault-plugin-database-snowflake/pull/109)
+* Added key-pair auth support for database configuration in Vault 1.16.21 Enterprise (https://github.com/hashicorp/vault-plugin-database-snowflake/pull/120)
 
 ## 0.14.0
 ### May 23, 2025
