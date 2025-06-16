@@ -1,5 +1,12 @@
 ## Unreleased
 
+## 0.14.1
+### June 5, 2025
+
+IMPROVEMENTS:
+
+* Added key-pair auth support for database configuration (https://github.com/hashicorp/vault-plugin-database-snowflake/pull/109)
+
 ## 0.14.0
 ### May 23, 2025
 
