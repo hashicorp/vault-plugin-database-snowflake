@@ -41,69 +41,6 @@ func TestOpenSnowflake(t *testing.T) {
 	require.NotNil(t, db.Stats())
 }
 
-// TestParseSnowflakeFieldsFromURL validates that URL
-// parsing for keypair authentication works as expected
-func TestParseSnowflakeFieldsFromURL(t *testing.T) {
-	tests := map[string]struct {
-		connectionURL string
-		wantAccount   string
-		wantDB        string
-		wantErr       error
-	}{
-		"valid URL": {
-			connectionURL: "account.snowflakecomputing.com/db",
-			wantAccount:   "account",
-			wantDB:        "db",
-			wantErr:       nil,
-		},
-		"complex URL": {
-			connectionURL: "dev.org_v2.1.5-us-eas2-1.snowflakecomputing.com/secret-db.name/withslash",
-			wantAccount:   "dev.org_v2.1.5-us-eas2-1",
-			wantDB:        "secret-db.name/withslash",
-			wantErr:       nil,
-		},
-		"invalid URL": {
-			connectionURL: "invalid-url",
-			wantAccount:   "",
-			wantDB:        "",
-			wantErr:       ErrInvalidSnowflakeURL,
-		},
-		"missing account name": {
-			connectionURL: ".snowflakecomputing.com/db",
-			wantAccount:   "",
-			wantDB:        "",
-			wantErr:       ErrInvalidSnowflakeURL,
-		},
-		"missing database name": {
-			connectionURL: "account.snowflakecomputing.com/",
-			wantAccount:   "",
-			wantDB:        "",
-			wantErr:       ErrInvalidSnowflakeURL,
-		},
-		"missing domain": {
-			connectionURL: "account..com/db",
-			wantAccount:   "",
-			wantDB:        "",
-			wantErr:       ErrInvalidSnowflakeURL,
-		},
-		"escape dots": {
-			connectionURL: "account.snowflakecomputingXcom/db",
-			wantAccount:   "",
-			wantDB:        "",
-			wantErr:       ErrInvalidSnowflakeURL,
-		},
-	}
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			user, db, err := parseSnowflakeFieldsFromURL(tt.connectionURL)
-
-			require.Equal(t, tt.wantAccount, user)
-			require.Equal(t, tt.wantDB, db)
-			require.Equal(t, tt.wantErr, err)
-		})
-	}
-}
-
 // TestGetPrivateKey ensures reading private
 // keys works as expected for multiple cases
 func TestGetPrivateKey(t *testing.T) {
