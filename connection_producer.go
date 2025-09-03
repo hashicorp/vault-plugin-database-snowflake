@@ -200,7 +200,7 @@ func openSnowflake(connectionURL, username string, providedPrivateKey []byte) (*
 	// Parse the connection_url - should be of the form <account_name>.snowflakecomputing.com[?param1=value1&paramN=valueN]
 	snowflakeConfig, err := gosnowflake.ParseDSN(connectionURL)
 	if err != nil {
-		return nil, ErrInvalidSnowflakeURL
+		return nil, fmt.Errorf("failed to parse connection_url: %w", err)
 	}
 
 	// Set JWT authentication method
