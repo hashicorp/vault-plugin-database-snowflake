@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	ErrInvalidSnowflakeURL = fmt.Errorf("invalid connection URL format, expect <account_name>.snowflakecomputing.com/<db_name>")
+	ErrInvalidSnowflakeURL = fmt.Errorf("invalid connection URL format, expecting <account_name>.snowflakecomputing.com[?param1=value1&paramN=valueN]")
 	ErrInvalidPrivateKey   = fmt.Errorf("failed to read provided private_key")
 )
 
@@ -200,7 +200,7 @@ func openSnowflake(connectionURL, username string, providedPrivateKey []byte) (*
 	// Parse the connection_url - should be of the form <account_name>.snowflakecomputing.com[?param1=value1&paramN=valueN]
 	snowflakeConfig, err := gosnowflake.ParseDSN(connectionURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse connection_url: %w", err)
+		return nil, ErrInvalidSnowflakeURL
 	}
 
 	// Set JWT authentication method
