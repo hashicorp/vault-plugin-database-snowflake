@@ -197,18 +197,15 @@ func (c *snowflakeConnectionProducer) Close() error {
 // Open the DB connection to Snowflake or return an error.
 func openSnowflake(connectionURL, username string, providedPrivateKey []byte) (*sql.DB, error) {
 
-	// Parse the connection_url - should be of the form <account_name>.snowflakecomputing.com[?param1=value1&paramN=valueN]
-	snowflakeConfig, err := gosnowflake.ParseDSN(connectionURL)
+	// Parse the full DSN to get the config
+	// ParseDSN expects a user, as well as a password if the authenticator param is not set
+	// The provided connectionURL is of the form <account_name>.snowflakecomputing.com
+	snowflakeConfig, err := gosnowflake.ParseDSN(buildFullSnowflakeDSN(connectionURL, username))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse connection_url: %w", err)
 	}
 
-	// Set JWT authentication method
-	snowflakeConfig.Authenticator = gosnowflake.AuthTypeJwt
-
-	// Set required authentication parameters
-	snowflakeConfig.User = username
-
+	// Add the private key to the config
 	privateKey, err := getPrivateKey(providedPrivateKey)
 	if err != nil {
 		return nil, err
@@ -219,6 +216,16 @@ func openSnowflake(connectionURL, username string, providedPrivateKey []byte) (*
 	connector := gosnowflake.NewConnector(gosnowflake.SnowflakeDriver{}, *snowflakeConfig)
 
 	return sql.OpenDB(connector), nil
+}
+
+func buildFullSnowflakeDSN(connectionURL, username string) string {
+	// TODO: support additional parameters in the connection URL
+	// e.g. ?param1=value1&paramN=valueN
+	// This requires parsing the URL and appending parameters to the DSN
+
+	fullDSN := fmt.Sprintf("%s@%s?authenticator=%s", username, connectionURL, gosnowflake.AuthTypeJwt)
+
+	return fullDSN
 }
 
 // Open and decode the private key file

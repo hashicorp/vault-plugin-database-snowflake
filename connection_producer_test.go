@@ -33,7 +33,7 @@ func TestOpenSnowflake(t *testing.T) {
 	var pemKey bytes.Buffer
 	pem.Encode(&pemKey, pemBlock)
 
-	db, err := openSnowflake("account.snowflakecomputing.com/db", "user", pemKey.Bytes())
+	db, err := openSnowflake("account.snowflakecomputing.com", "user", pemKey.Bytes())
 	if err != nil {
 		t.Fatalf("Failed to open Snowflake connection: %v", err)
 	}
