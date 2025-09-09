@@ -10,14 +10,15 @@ import (
 	"database/sql"
 	"encoding/pem"
 	"fmt"
-	"github.com/hashicorp/errwrap"
-	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
 	"net/url"
 	"regexp"
 	"sync"
 	"time"
+
+	"github.com/hashicorp/errwrap"
+	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
 
 	"github.com/hashicorp/vault/sdk/database/helper/connutil"
 	"github.com/mitchellh/mapstructure"
@@ -149,8 +150,14 @@ func (c *snowflakeConnectionProducer) Connection(ctx context.Context) (interface
 		return nil, connutil.ErrNotInitialized
 	}
 
+	// If we already have a DB, test it and return
 	if c.snowflakeDB != nil {
-		return c.snowflakeDB, nil
+		if err := c.snowflakeDB.PingContext(ctx); err == nil {
+			return c.snowflakeDB, nil
+		}
+		// If the ping was unsuccessful, close it and ignore errors as we'll be
+		// reestablishing anyways
+		c.snowflakeDB.Close()
 	}
 
 	var db *sql.DB
