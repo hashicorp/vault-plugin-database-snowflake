@@ -210,7 +210,7 @@ func getSnowflakeConfig(connectionURL, username string, providedPrivateKey []byt
 	// <account_name>.snowflakecomputing.com/<db_name>?queryParameters...
 	u, err := url.Parse(connectionURL)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing Snowflake connection URL %s; err=%w", connectionURL, err)
+		return nil, fmt.Errorf("error parsing Snowflake connection URL %q: %w", connectionURL, err)
 	}
 
 	// add authenticator query param to URL to indicate JWT auth
