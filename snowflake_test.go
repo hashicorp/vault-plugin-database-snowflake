@@ -141,7 +141,7 @@ func TestSnowflakeSQL_Initialize(t *testing.T) {
 		db := new()
 		defer dbtesting.AssertClose(t, db)
 
-		connURL, rawBase64PrivateKey, user, err := getKeyPairAuthParameters("disableOCSPChecks=true&client_session_keep_alive=true")
+		connURL, rawBase64PrivateKey, user, err := getKeyPairAuthParameters("disableOCSPChecks=true&maxRetryCount=5")
 		if err != nil {
 			t.Fatalf("failed to retrieve connection URL: %s", err)
 		}

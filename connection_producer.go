@@ -238,20 +238,6 @@ func getSnowflakeConfig(connectionURL, username string, providedPrivateKey []byt
 	return cfg, nil
 }
 
-// parseSnowflakeFieldsFromURL uses a regex to extract account and DB
-// info from a connectionURL
-func parseSnowflakeFieldsFromURL(connectionURL string) (string, string, error) {
-	if !accountAndDBNameFromConnURLRegex.MatchString(connectionURL) {
-		return "", "", ErrInvalidSnowflakeURL
-	}
-	res := accountAndDBNameFromConnURLRegex.FindStringSubmatch(connectionURL)
-	if len(res) != 3 {
-		return "", "", ErrInvalidSnowflakeURL
-	}
-
-	return res[1], res[2], nil
-}
-
 // Open and decode the private key file
 func getPrivateKey(providedPrivateKey []byte) (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode(providedPrivateKey)
