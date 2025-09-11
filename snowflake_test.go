@@ -95,7 +95,53 @@ func TestSnowflakeSQL_Initialize(t *testing.T) {
 		db := new()
 		defer dbtesting.AssertClose(t, db)
 
-		connURL, rawBase64PrivateKey, user, err := getKeyPairAuthParameters()
+		connURL, rawBase64PrivateKey, user, err := getKeyPairAuthParameters("")
+		if err != nil {
+			t.Fatalf("failed to retrieve connection URL: %s", err)
+		}
+
+		// decode base64 encoded private key from environment
+		privateKey, err := base64.StdEncoding.DecodeString(rawBase64PrivateKey)
+		if err != nil {
+			t.Fatalf("failed to decode private key: %s", err)
+		}
+
+		expectedConfig := map[string]interface{}{
+			"connection_url": connURL,
+			"username":       user,
+			"private_key":    privateKey,
+			dbplugin.SupportedCredentialTypesKey: []interface{}{
+				dbplugin.CredentialTypePassword.String(),
+				dbplugin.CredentialTypeRSAPrivateKey.String(),
+			},
+		}
+		req := dbplugin.InitializeRequest{
+			Config: map[string]interface{}{
+				"connection_url": connURL,
+				"username":       user,
+				"private_key":    privateKey,
+			},
+			VerifyConnection: true,
+		}
+		resp := dbtesting.AssertInitialize(t, db, req)
+		if !reflect.DeepEqual(resp.Config, expectedConfig) {
+			t.Fatalf("Actual: %#v\nExpected: %#v", resp.Config, expectedConfig)
+		}
+
+		connProducer := db.snowflakeConnectionProducer
+		if !connProducer.Initialized {
+			t.Fatal("Database should be initialized")
+		}
+	})
+
+	// the environment variable SNOWFLAKE_PRIVATE_KEY in CI
+	// is a base64 encoded string. As such, this test expects the
+	// input for the variable to be base64 encoded
+	t.Run("keypair auth with query params", func(t *testing.T) {
+		db := new()
+		defer dbtesting.AssertClose(t, db)
+
+		connURL, rawBase64PrivateKey, user, err := getKeyPairAuthParameters("disableOCSPChecks=true&maxRetryCount=5")
 		if err != nil {
 			t.Fatalf("failed to retrieve connection URL: %s", err)
 		}
@@ -506,7 +552,7 @@ func dsnString() (string, error) {
 	return dsnString, nil
 }
 
-func getKeyPairAuthParameters() (connURL string, pKey string, user string, err error) {
+func getKeyPairAuthParameters(optionalQueryParams string) (connURL string, pKey string, user string, err error) {
 	user = os.Getenv(envVarSnowflakeUser)
 	pKey = os.Getenv(envVarSnowflakePrivateKey)
 	account := os.Getenv(envVarSnowflakeAccount)
@@ -527,6 +573,10 @@ func getKeyPairAuthParameters() (connURL string, pKey string, user string, err e
 	}
 
 	connURL = fmt.Sprintf("%s.snowflakecomputing.com/%s", user, database)
+
+	if optionalQueryParams != "" {
+		connURL = fmt.Sprintf("%s?%s", connURL, optionalQueryParams)
+	}
 
 	return connURL, pKey, user, err
 }

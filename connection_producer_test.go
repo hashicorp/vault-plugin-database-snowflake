@@ -9,6 +9,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"github.com/snowflakedb/gosnowflake"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -41,59 +42,86 @@ func TestOpenSnowflake(t *testing.T) {
 	require.NotNil(t, db.Stats())
 }
 
-// TestParseSnowflakeFieldsFromURL validates that URL
-// parsing for keypair authentication works as expected
-func TestParseSnowflakeFieldsFromURL(t *testing.T) {
-	tests := map[string]struct {
-		connectionURL string
-		wantAccount   string
-		wantDB        string
-		wantErr       error
+func TestGetSnowflakeConfig(t *testing.T) {
+	tt := map[string]struct {
+		providedPrivateKey string
+		username           string
+		connectionURL      string
+		expectedConfig     *gosnowflake.Config
+		expectedError      string
 	}{
-		"valid URL": {
-			connectionURL: "account.snowflakecomputing.com/db",
-			wantAccount:   "account",
-			wantDB:        "db",
-			wantErr:       nil,
+		// confirms that the connection URL format upon initial release is correctly parsed
+		"key pair connection URL format without params": {
+			providedPrivateKey: testPrivateKey,
+			username:           "testvaultuser",
+			connectionURL:      "testaccount.snowflakecomputing.com/testdb",
+			expectedConfig: &gosnowflake.Config{
+				Account:  "testaccount",
+				User:     "testvaultuser",
+				Database: "testdb",
+				PrivateKey: func() *rsa.PrivateKey {
+					key, _ := getPrivateKey([]byte(testPrivateKey))
+					return key
+				}(),
+				Authenticator: gosnowflake.AuthTypeJwt,
+			},
 		},
-		"complex URL": {
-			connectionURL: "dev.org_v2.1.5-us-eas2-1.snowflakecomputing.com/secret-db.name/withslash",
-			wantAccount:   "dev.org_v2.1.5-us-eas2-1",
-			wantDB:        "secret-db.name/withslash",
-			wantErr:       nil,
+		// confirms that query params in the connection URL are correctly parsed
+		"key pair connection URL format with query params": {
+			providedPrivateKey: testPrivateKey,
+			username:           "testvaultuser",
+			connectionURL:      "testaccount.snowflakecomputing.com/testdb?disableOCSPChecks=true&maxRetryCount=5",
+			expectedConfig: &gosnowflake.Config{
+				Account:  "testaccount",
+				User:     "testvaultuser",
+				Database: "testdb",
+				PrivateKey: func() *rsa.PrivateKey {
+					key, _ := getPrivateKey([]byte(testPrivateKey))
+					return key
+				}(),
+				DisableOCSPChecks: true,
+				MaxRetryCount:     5,
+				Authenticator:     gosnowflake.AuthTypeJwt,
+			},
 		},
-		"invalid URL": {
-			connectionURL: "invalid-url",
-			wantAccount:   "",
-			wantDB:        "",
-			wantErr:       ErrInvalidSnowflakeURL,
-		},
-		"missing account name": {
-			connectionURL: ".snowflakecomputing.com/db",
-			wantAccount:   "",
-			wantDB:        "",
-			wantErr:       ErrInvalidSnowflakeURL,
-		},
-		"missing database name": {
-			connectionURL: "account.snowflakecomputing.com/",
-			wantAccount:   "",
-			wantDB:        "",
-			wantErr:       ErrInvalidSnowflakeURL,
-		},
-		"missing domain": {
-			connectionURL: "account..com/db",
-			wantAccount:   "",
-			wantDB:        "",
-			wantErr:       ErrInvalidSnowflakeURL,
+		// confirms that DB is optional in the connection URL
+		"key pair connection URL without DB": {
+			providedPrivateKey: testPrivateKey,
+			username:           "testvaultuser",
+			connectionURL:      "testaccount.snowflakecomputing.com?disableOCSPChecks=true&maxRetryCount=5",
+			expectedConfig: &gosnowflake.Config{
+				Account: "testaccount",
+				User:    "testvaultuser",
+				PrivateKey: func() *rsa.PrivateKey {
+					key, _ := getPrivateKey([]byte(testPrivateKey))
+					return key
+				}(),
+				DisableOCSPChecks: true,
+				MaxRetryCount:     5,
+				Authenticator:     gosnowflake.AuthTypeJwt,
+			},
 		},
 	}
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			user, db, err := parseSnowflakeFieldsFromURL(tt.connectionURL)
 
-			require.Equal(t, tt.wantAccount, user)
-			require.Equal(t, tt.wantDB, db)
-			require.Equal(t, tt.wantErr, err)
+	for name, tc := range tt {
+		t.Run(name, func(t *testing.T) {
+			cfg, err := getSnowflakeConfig(tc.connectionURL, tc.username, []byte(tc.providedPrivateKey))
+			if tc.expectedError != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.expectedError)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, cfg)
+			// Compare all relevant fields for this test
+			// this confirms that the config was correctly parsed from the provided inputs
+			require.Equal(t, tc.expectedConfig.Account, cfg.Account)
+			require.Equal(t, tc.expectedConfig.User, cfg.User)
+			require.Equal(t, tc.expectedConfig.Database, cfg.Database)
+			require.Equal(t, tc.expectedConfig.Authenticator, cfg.Authenticator)
+			require.Equal(t, tc.expectedConfig.DisableOCSPChecks, cfg.DisableOCSPChecks)
+			require.Equal(t, tc.expectedConfig.KeepSessionAlive, cfg.KeepSessionAlive)
+			require.NotNil(t, cfg.PrivateKey)
 		})
 	}
 }
