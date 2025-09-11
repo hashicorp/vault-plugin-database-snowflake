@@ -197,11 +197,35 @@ func (c *snowflakeConnectionProducer) Close() error {
 
 // Open the DB connection to Snowflake or return an error.
 func openSnowflake(connectionURL, username string, providedPrivateKey []byte) (*sql.DB, error) {
-	// Parse the connection_url for required fields. Should be of
-	// the form <account_name>.snowflakecomputing.com/<db_name>
-	accountName, dbName, err := parseSnowflakeFieldsFromURL(connectionURL)
+	cfg, err := getSnowflakeConfig(connectionURL, username, providedPrivateKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error constructing snowflake config: %w", err)
+	}
+	connector := gosnowflake.NewConnector(gosnowflake.SnowflakeDriver{}, *cfg)
+
+	return sql.OpenDB(connector), nil
+}
+
+func getSnowflakeConfig(connectionURL, username string, providedPrivateKey []byte) (*gosnowflake.Config, error) {
+	// <account_name>.snowflakecomputing.com/<db_name>?queryParameters...
+	u, err := url.Parse(connectionURL)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing Snowflake connection URL %q: %w", connectionURL, err)
+	}
+
+	// add authenticator query param to URL to indicate JWT auth
+	// https://pkg.go.dev/github.com/snowflakedb/gosnowflake#hdr-JWT_authentication
+	q := u.Query()
+	q.Set("authenticator", gosnowflake.AuthTypeJwt.String())
+	//q.Set("privateKey", "true") // This is needed to avoid gosnowflake trying to read the private key from a file path
+	u.RawQuery = q.Encode()
+
+	// construct dsn for gosnowflake
+	// "user:""@<account_name>.snowflakecomputing.com/<db_name>?queryParameters...
+	dsn := fmt.Sprintf("%s:%s@%s", username, "", u.String())
+	cfg, err := gosnowflake.ParseDSN(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing Snowflake DSN %s; err=%w", dsn, err)
 	}
 
 	privateKey, err := getPrivateKey(providedPrivateKey)
@@ -209,30 +233,9 @@ func openSnowflake(connectionURL, username string, providedPrivateKey []byte) (*
 		return nil, err
 	}
 
-	snowflakeConfig := &gosnowflake.Config{
-		Account:       accountName,
-		Database:      dbName,
-		User:          username,
-		Authenticator: gosnowflake.AuthTypeJwt,
-		PrivateKey:    privateKey,
-	}
-	connector := gosnowflake.NewConnector(gosnowflake.SnowflakeDriver{}, *snowflakeConfig)
+	cfg.PrivateKey = privateKey
 
-	return sql.OpenDB(connector), nil
-}
-
-// parseSnowflakeFieldsFromURL uses a regex to extract account and DB
-// info from a connectionURL
-func parseSnowflakeFieldsFromURL(connectionURL string) (string, string, error) {
-	if !accountAndDBNameFromConnURLRegex.MatchString(connectionURL) {
-		return "", "", ErrInvalidSnowflakeURL
-	}
-	res := accountAndDBNameFromConnURLRegex.FindStringSubmatch(connectionURL)
-	if len(res) != 3 {
-		return "", "", ErrInvalidSnowflakeURL
-	}
-
-	return res[1], res[2], nil
+	return cfg, nil
 }
 
 // Open and decode the private key file

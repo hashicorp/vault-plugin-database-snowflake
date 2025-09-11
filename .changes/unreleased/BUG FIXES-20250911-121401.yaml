@@ -1,0 +1,5 @@
+kind: BUG FIXES
+body: Enable query param parsing on connection URL
+time: 2025-09-11T12:14:01.697808-07:00
+custom:
+    Issue: "135"
