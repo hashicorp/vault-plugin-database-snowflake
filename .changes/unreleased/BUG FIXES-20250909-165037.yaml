@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 kind: BUG FIXES
 body: Refresh the connection upon expiration
 time: 2025-09-09T16:50:37.281682-05:00
