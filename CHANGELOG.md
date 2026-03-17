@@ -1,3 +1,21 @@
+## Unreleased
+## v0.16.0
+### March 17, 2026
+
+IMPROVEMENTS:
+* Updated dependencies:
+   * go 1.25.0 => 1.26.1
+   * golang.org/x/sync v0.16.0 => v0.18.0
+   * github.com/hashicorp/vault/sdk v0.19.0 => v0.23.0
+   * golang.org/x/mod v0.27.0 => v0.29.0
+   * golang.org/x/text v0.28.0 => v0.31.0
+   * golang.org/x/term v0.34.0 => v0.37.0
+   * golang.org/x/sys v0.35.0 => v0.38.0
+   * golang.org/x/tools v0.36.0 => v0.38.0
+   * golang.org/x/crypto v0.41.0 => v0.45.0
+   * golang.org/x/net v0.43.0 => v0.47.0
+   * github.com/dvsekhvalnov/jose2go v1.6.0 => v1.7.0
+
 ## v0.15.0
 ### October 3, 2025
 
