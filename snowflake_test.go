@@ -28,7 +28,6 @@ import (
 const (
 	envVarSnowflakeAccount    = "SNOWFLAKE_ACCOUNT"
 	envVarSnowflakeUser       = "SNOWFLAKE_USER"
-	envVarSnowflakePassword   = "SNOWFLAKE_PASSWORD"
 	envVarSnowflakeDatabase   = "SNOWFLAKE_DATABASE"
 	envVarSnowflakeSchema     = "SNOWFLAKE_SCHEMA"
 	envVarSnowflakePrivateKey = "SNOWFLAKE_PRIVATE_KEY"
@@ -38,13 +37,19 @@ const (
 
 var runAcceptanceTests = os.Getenv(envVarRunAccTests) != ""
 
-func connUrl(t *testing.T) string {
-	connURL, err := dsnString()
+func connDetails(t *testing.T) (string, []byte, string) {
+	connURL, rawBase64PrivateKey, user, err := getKeyPairAuthParameters("")
 	if err != nil {
-		t.Fatalf("failed to retrieve connection DSN: %s", err)
+		t.Fatalf("failed to retrieve connection URL: %s", err)
 	}
 
-	return connURL
+	// decode base64 encoded private key from environment
+	privateKey, err := base64.StdEncoding.DecodeString(rawBase64PrivateKey)
+	if err != nil {
+		t.Fatalf("failed to decode private key: %s", err)
+	}
+
+	return connURL, privateKey, user
 }
 
 // TestSnowflakeSQL_Initialize ensures initializing the Snowflake
@@ -55,39 +60,6 @@ func TestSnowflakeSQL_Initialize(t *testing.T) {
 		t.SkipNow()
 	}
 
-	t.Run("userpass auth", func(t *testing.T) {
-		db := new()
-		defer dbtesting.AssertClose(t, db)
-
-		connURL, err := dsnString()
-		if err != nil {
-			t.Fatalf("failed to retrieve connection DSN: %s", err)
-		}
-
-		expectedConfig := map[string]interface{}{
-			"connection_url": connURL,
-			dbplugin.SupportedCredentialTypesKey: []interface{}{
-				dbplugin.CredentialTypePassword.String(),
-				dbplugin.CredentialTypeRSAPrivateKey.String(),
-			},
-		}
-		req := dbplugin.InitializeRequest{
-			Config: map[string]interface{}{
-				"connection_url": connURL,
-			},
-			VerifyConnection: true,
-		}
-		resp := dbtesting.AssertInitialize(t, db, req)
-		if !reflect.DeepEqual(resp.Config, expectedConfig) {
-			t.Fatalf("Actual: %#v\nExpected: %#v", resp.Config, expectedConfig)
-		}
-
-		connProducer := db.snowflakeConnectionProducer
-		if !connProducer.Initialized {
-			t.Fatal("Database should be initialized")
-		}
-	})
-
 	// the environment variable SNOWFLAKE_PRIVATE_KEY in CI
 	// is a base64 encoded string. As such, this test expects the
 	// input for the variable to be base64 encoded
@@ -95,16 +67,7 @@ func TestSnowflakeSQL_Initialize(t *testing.T) {
 		db := new()
 		defer dbtesting.AssertClose(t, db)
 
-		connURL, rawBase64PrivateKey, user, err := getKeyPairAuthParameters("")
-		if err != nil {
-			t.Fatalf("failed to retrieve connection URL: %s", err)
-		}
-
-		// decode base64 encoded private key from environment
-		privateKey, err := base64.StdEncoding.DecodeString(rawBase64PrivateKey)
-		if err != nil {
-			t.Fatalf("failed to decode private key: %s", err)
-		}
+		connURL, privateKey, user := connDetails(t)
 
 		expectedConfig := map[string]interface{}{
 			"connection_url": connURL,
@@ -246,7 +209,7 @@ func TestSnowflake_NewUser(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			connURL := connUrl(t)
+			connURL, privateKey, user := connDetails(t)
 
 			db := new()
 			defer dbtesting.AssertClose(t, db)
@@ -254,6 +217,8 @@ func TestSnowflake_NewUser(t *testing.T) {
 			initReq := dbplugin.InitializeRequest{
 				Config: map[string]interface{}{
 					"connection_url": connURL,
+					"username":       user,
+					"private_key":    privateKey,
 				},
 				VerifyConnection: true,
 			}
@@ -309,7 +274,7 @@ func TestSnowflake_RenewUser(t *testing.T) {
 		t.SkipNow()
 	}
 
-	connURL := connUrl(t)
+	connURL, privateKey, user := connDetails(t)
 
 	db := new()
 	defer dbtesting.AssertClose(t, db)
@@ -317,6 +282,8 @@ func TestSnowflake_RenewUser(t *testing.T) {
 	initReq := dbplugin.InitializeRequest{
 		Config: map[string]interface{}{
 			"connection_url": connURL,
+			"username":       user,
+			"private_key":    privateKey,
 		},
 		VerifyConnection: true,
 	}
@@ -365,7 +332,7 @@ func TestSnowflake_RevokeUser(t *testing.T) {
 		t.SkipNow()
 	}
 
-	connURL := connUrl(t)
+	connURL, privateKey, user := connDetails(t)
 
 	type testCase struct {
 		deleteStatements []string
@@ -395,6 +362,8 @@ func TestSnowflake_RevokeUser(t *testing.T) {
 			initReq := dbplugin.InitializeRequest{
 				Config: map[string]interface{}{
 					"connection_url": connURL,
+					"username":       user,
+					"private_key":    privateKey,
 				},
 				VerifyConnection: true,
 			}
@@ -439,7 +408,7 @@ func TestSnowflake_DefaultUsernameTemplate(t *testing.T) {
 		t.SkipNow()
 	}
 
-	connURL := connUrl(t)
+	connURL, privateKey, user := connDetails(t)
 
 	db := new()
 	defer dbtesting.AssertClose(t, db)
@@ -447,6 +416,8 @@ func TestSnowflake_DefaultUsernameTemplate(t *testing.T) {
 	initReq := dbplugin.InitializeRequest{
 		Config: map[string]interface{}{
 			"connection_url": connURL,
+			"username":       user,
+			"private_key":    privateKey,
 		},
 		VerifyConnection: true,
 	}
@@ -485,7 +456,7 @@ func TestSnowflake_CustomUsernameTemplate(t *testing.T) {
 		t.SkipNow()
 	}
 
-	connURL := connUrl(t)
+	connURL, privateKey, user := connDetails(t)
 
 	db := new()
 	defer dbtesting.AssertClose(t, db)
@@ -493,6 +464,8 @@ func TestSnowflake_CustomUsernameTemplate(t *testing.T) {
 	initReq := dbplugin.InitializeRequest{
 		Config: map[string]interface{}{
 			"connection_url":    connURL,
+			"username":          user,
+			"private_key":       privateKey,
 			"username_template": "{{.DisplayName}}_{{random 10}}",
 		},
 		VerifyConnection: true,
@@ -525,31 +498,6 @@ func TestSnowflake_CustomUsernameTemplate(t *testing.T) {
 	assertPasswordCredentialsExist(t, connURL, createResp.Username, password)
 
 	require.Regexp(t, `^test_[a-zA-Z0-9]{10}$`, createResp.Username)
-}
-
-func dsnString() (string, error) {
-	user := os.Getenv(envVarSnowflakeUser)
-	password := os.Getenv(envVarSnowflakePassword)
-	account := os.Getenv(envVarSnowflakeAccount)
-
-	var err error
-	if user == "" {
-		err = multierror.Append(err, fmt.Errorf("SNOWFLAKE_USER not set"))
-	}
-	if password == "" {
-		err = multierror.Append(err, fmt.Errorf("SNOWFLAKE_PASSWORD not set"))
-	}
-	if account == "" {
-		err = multierror.Append(err, fmt.Errorf("SNOWFLAKE_ACCOUNT not set"))
-	}
-
-	if err != nil {
-		return "", err
-	}
-
-	dsnString := fmt.Sprintf("%s:%s@%s", user, password, account)
-
-	return dsnString, nil
 }
 
 func getKeyPairAuthParameters(optionalQueryParams string) (connURL string, pKey string, user string, err error) {
