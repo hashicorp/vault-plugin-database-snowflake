@@ -520,7 +520,7 @@ func getKeyPairAuthParameters(optionalQueryParams string) (connURL string, pKey 
 		err = multierror.Append(err, fmt.Errorf("SNOWFLAKE_DATABASE not set"))
 	}
 
-	connURL = fmt.Sprintf("%s.snowflakecomputing.com/%s", user, database)
+	connURL = fmt.Sprintf("%s.snowflakecomputing.com/%s", account, database)
 
 	if optionalQueryParams != "" {
 		connURL = fmt.Sprintf("%s?%s", connURL, optionalQueryParams)
