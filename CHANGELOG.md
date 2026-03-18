@@ -1,3 +1,28 @@
+## v0.15.0
+### October 3, 2025
+
+* Automated dependency upgrades (#125)
+* Update changelog for v0.14.2 release (#157)
+* Update dependencies (#148)
+* Refresh the connection when necessary (#134)
+* Enable query parameters parsing in connection URL for keypair auth (#135)
+* init changie (#131)
+* Add backport assistant workflow (#130)
+* Add backport assistant workflow (#128)
+* [Compliance] - PR Template Changes Required (#126)
+* Update CHANGELOG.md (#127)
+* Update CHANGELOG for 0.14.1 (#123)
+* escape dot in regex and add test to fix secvuln (#122)
+* Automated dependency upgrades (#115)
+* Add support for keypair root configuration (#109)
+
+## v0.14.2
+### September 17, 2025
+
+* release/vault-1.20.x: Update dependencies (#153)
+* Backport of Refresh the connection when necessary into release/vault-1.20.x (#147)
+* Backport Enable query parameters parsing in connection URL for keypair auth into `release/vault-1.20.x` (#137)
+
 ## 0.14.1
 ### June 5, 2025
 
