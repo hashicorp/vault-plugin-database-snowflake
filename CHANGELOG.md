@@ -7,7 +7,8 @@ IMPROVEMENTS:
    * go 1.25.0 => 1.26.1
    * google.golang.org/genproto/googleapis/rpc v0.0.0-20250425173222-7b384671a197 => v0.0.0-20251202230838-ff82c1b0f217
    * golang.org/x/sync v0.16.0 => v0.19.0
-   * github.com/hashicorp/vault/sdk v0.19.0 => v0.23.0
+   * github.com/hashicorp/vault/sdk v0.19.0 => v0.24.0
+   * github.com/snowflakedb/gosnowflake v1.17.0 => v1.19.0
    * golang.org/x/mod v0.27.0 => v0.30.0
    * golang.org/x/text v0.28.0 => v0.32.0
    * golang.org/x/oauth2 v0.30.0 => v0.34.0
