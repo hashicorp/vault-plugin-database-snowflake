@@ -1,3 +1,31 @@
+## Unreleased
+## v0.16.0
+### March 17, 2026
+
+IMPROVEMENTS:
+* Updated dependencies:
+   * go 1.25.0 => 1.26.1
+   * google.golang.org/genproto/googleapis/rpc v0.0.0-20250425173222-7b384671a197 => v0.0.0-20251202230838-ff82c1b0f217
+   * golang.org/x/sync v0.16.0 => v0.19.0
+   * github.com/hashicorp/vault/sdk v0.19.0 => v0.24.0
+   * github.com/snowflakedb/gosnowflake v1.17.0 => v1.19.0
+   * golang.org/x/mod v0.27.0 => v0.30.0
+   * golang.org/x/text v0.28.0 => v0.32.0
+   * golang.org/x/oauth2 v0.30.0 => v0.34.0
+   * golang.org/x/term v0.34.0 => v0.38.0
+   * golang.org/x/sys v0.35.0 => v0.40.0
+   * golang.org/x/tools v0.36.0 => v0.39.0
+   * golang.org/x/crypto v0.41.0 => v0.46.0
+   * golang.org/x/net v0.43.0 => v0.48.0
+   * cloud.google.com/go/compute/metadata v0.6.0 => v0.9.0
+   * go.opentelemetry.io/auto/sdk v1.1.0 => v1.2.1
+   * google.golang.org/protobuf v1.36.6 => v1.36.11
+   * go.opentelemetry.io/otel v1.37.0 => v1.40.0
+   * go.opentelemetry.io/otel/metric v1.37.0 => v1.40.0
+   * go.opentelemetry.io/otel/trace v1.37.0 => v1.40.0
+   * github.com/dvsekhvalnov/jose2go v1.6.0 => v1.7.0
+   * google.golang.org/grpc v1.73.0 => v1.79.3
+
 ## v0.15.0
 ### October 3, 2025
 
