@@ -1,3 +1,12 @@
+## v0.16.0
+### March 20, 2026
+
+* Prepare v0.16.0 release (#174)
+* All tests use keypair auth (#175)
+* [COMPLIANCE] Update Copyright and License Headers (#171)
+* Update changelog for v0.15.0 release (#158)
+* chore: remove changie (#160)
+
 ## Unreleased
 ## v0.16.0
 ### March 17, 2026
