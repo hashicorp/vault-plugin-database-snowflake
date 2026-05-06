@@ -1,8 +1,6 @@
 module github.com/hashicorp/vault-plugin-database-snowflake
 
-go 1.23.3
-
-toolchain go1.23.5
+go 1.25
 
 require (
 	github.com/hashicorp/errwrap v1.1.0
@@ -30,6 +28,7 @@ require (
 	github.com/JohnCGriffin/overflow v0.0.0-20211019200055-46fa312c352c // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/apache/arrow-go/v18 v18.0.0 // indirect
+	github.com/apache/thrift v0.23.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.26.1 // indirect
