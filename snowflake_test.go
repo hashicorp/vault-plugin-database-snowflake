@@ -34,14 +34,10 @@ const (
 
 	envVarRunAccTests = "VAULT_ACC"
 
+	// Acceptance tests use service users because password-only sign-ins require MFA.
 	defaultRSAKeyCreationStmts = `
-CREATE USER {{username}} RSA_PUBLIC_KEY='{{public_key}}';
+CREATE USER {{username}} TYPE=SERVICE RSA_PUBLIC_KEY='{{public_key}}';
 GRANT ROLE public TO USER {{username}};
-GRANT USAGE ON DATABASE %s TO USER {{username}};`
-
-	defaultPasswordCreationStmts = `
-CREATE USER {{name}} PASSWORD = '{{password}}' DEFAULT_ROLE = public;
-GRANT ROLE public TO USER {{name}};
 GRANT USAGE ON DATABASE %s TO USER {{username}};`
 
 	defaultUsageCreationStmt = "GRANT USAGE ON DATABASE %s TO USER {{username}};"
@@ -64,9 +60,8 @@ func connDetails(t *testing.T) (string, []byte, string) {
 	return connURL, privateKey, user
 }
 
-// TestSnowflakeSQL_Initialize ensures initializing the Snowflake
-// DB works as expected for both user-pass and keypair authentication
-// scenarios
+// TestSnowflakeSQL_Initialize verifies key-pair authentication with and without
+// connection URL parameters.
 func TestSnowflakeSQL_Initialize(t *testing.T) {
 	if !runAcceptanceTests {
 		t.SkipNow()
@@ -154,7 +149,6 @@ func TestSnowflakeSQL_Initialize(t *testing.T) {
 			t.Fatal("Database should be initialized")
 		}
 	})
-
 }
 
 func TestSnowflake_NewUser(t *testing.T) {
@@ -165,53 +159,35 @@ func TestSnowflake_NewUser(t *testing.T) {
 	dbName := getTestDatabase(t)
 
 	type testCase struct {
-		creationStmts  []string
-		credentialType dbplugin.CredentialType
-		keyBits        int
-		password       string
-		expectErr      bool
+		creationStmts []string
+		keyBits       int
+		expectErr     bool
 	}
 
 	tests := map[string]testCase{
 		"new user with empty creation statements": {
-			credentialType: dbplugin.CredentialTypePassword,
-			creationStmts:  []string{},
-			expectErr:      true,
+			creationStmts: []string{},
+			keyBits:       2048,
+			expectErr:     true,
 		},
-		"new user with password credential using name": {
-			credentialType: dbplugin.CredentialTypePassword,
+		"new user with 2048 bit rsa_private_key credential using name": {
 			creationStmts: []string{
-				fmt.Sprintf(defaultPasswordCreationStmts, dbName),
-			},
-			password: "y8fva_sdVA3rasf",
-		},
-		"new user with password credential using username and split statements": {
-			credentialType: dbplugin.CredentialTypePassword,
-			creationStmts: []string{
-				"CREATE USER {{username}} PASSWORD = '{{password}}';",
-				"GRANT ROLE public TO USER {{username}};",
-				fmt.Sprintf(defaultUsageCreationStmt, dbName),
-			},
-			password: "secure_password",
-		},
-		"new user with 2048 bit rsa_private_key credential": {
-			credentialType: dbplugin.CredentialTypeRSAPrivateKey,
-			creationStmts: []string{
-				fmt.Sprintf(defaultRSAKeyCreationStmts, dbName),
+				fmt.Sprintf(`
+CREATE USER {{name}} TYPE=SERVICE RSA_PUBLIC_KEY='{{public_key}}';
+GRANT ROLE public TO USER {{name}};
+GRANT USAGE ON DATABASE %s TO USER {{name}};`, dbName),
 			},
 			keyBits: 2048,
 		},
 		"new user with 3072 bit rsa_private_key credential": {
-			credentialType: dbplugin.CredentialTypeRSAPrivateKey,
 			creationStmts: []string{
 				fmt.Sprintf(defaultRSAKeyCreationStmts, dbName),
 			},
 			keyBits: 3072,
 		},
 		"new user with 4096 bit rsa_private_key credential and split statements": {
-			credentialType: dbplugin.CredentialTypeRSAPrivateKey,
 			creationStmts: []string{
-				"CREATE USER {{username}} RSA_PUBLIC_KEY='{{public_key}}';",
+				"CREATE USER {{username}} TYPE=SERVICE RSA_PUBLIC_KEY='{{public_key}}';",
 				"GRANT ROLE public TO USER {{username}};",
 				fmt.Sprintf(defaultUsageCreationStmt, dbName),
 			},
@@ -236,6 +212,7 @@ func TestSnowflake_NewUser(t *testing.T) {
 			}
 			dbtesting.AssertInitialize(t, db, initReq)
 
+			pub, priv := testGenerateRSAKeyPair(t, test.keyBits)
 			createReq := dbplugin.NewUserRequest{
 				UsernameConfig: dbplugin.UsernameMetadata{
 					DisplayName: "test",
@@ -244,39 +221,22 @@ func TestSnowflake_NewUser(t *testing.T) {
 				Statements: dbplugin.Statements{
 					Commands: test.creationStmts,
 				},
-				CredentialType: test.credentialType,
+				CredentialType: dbplugin.CredentialTypeRSAPrivateKey,
+				PublicKey:      pub,
 				Expiration:     time.Now().Add(time.Hour),
 			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), getRequestTimeout(t))
 			defer cancel()
 
-			switch test.credentialType {
-			case dbplugin.CredentialTypePassword:
-				createReq.Password = test.password
-				createResp, err := db.NewUser(ctx, createReq)
-				if test.expectErr {
-					require.Error(t, err)
-					return
-				} else if err != nil {
-					t.Fatalf("failed to create user %s", err)
-				}
-				defer attemptDropUser(connURL, user, createResp.Username, privateKey)
-				assertPasswordCredentialsExist(t, connURL, createResp.Username, test.password)
-
-			case dbplugin.CredentialTypeRSAPrivateKey:
-				pub, priv := testGenerateRSAKeyPair(t, test.keyBits)
-				createReq.PublicKey = pub
-				createResp, err := db.NewUser(ctx, createReq)
-				if test.expectErr {
-					require.Error(t, err)
-					return
-				} else if err != nil {
-					t.Fatalf("failed to create user %s", err)
-				}
-				defer attemptDropUser(connURL, user, createResp.Username, privateKey)
-				assertRSAKeyPairCredentialsExist(t, connURL, createResp.Username, priv)
+			createResp, err := db.NewUser(ctx, createReq)
+			if test.expectErr {
+				require.Error(t, err, "empty creation statements must be rejected")
+				return
 			}
+			require.NoError(t, err, "failed to create user")
+			defer attemptDropUser(connURL, user, createResp.Username, privateKey)
+			assertRSAKeyPairCredentialsExist(t, connURL, createResp.Username, priv)
 		})
 	}
 }
@@ -302,7 +262,7 @@ func TestSnowflake_RenewUser(t *testing.T) {
 	}
 	dbtesting.AssertInitialize(t, db, initReq)
 
-	password := "y8fva_sdVA3rasf"
+	pub, priv := testGenerateRSAKeyPair(t, 2048)
 
 	createReq := dbplugin.NewUserRequest{
 		UsernameConfig: dbplugin.UsernameMetadata{
@@ -311,17 +271,18 @@ func TestSnowflake_RenewUser(t *testing.T) {
 		},
 		Statements: dbplugin.Statements{
 			Commands: []string{
-				fmt.Sprintf(defaultPasswordCreationStmts, dbName),
+				fmt.Sprintf(defaultRSAKeyCreationStmts, dbName),
 			},
 		},
-		Password:   password,
-		Expiration: time.Now().Add(time.Hour),
+		CredentialType: dbplugin.CredentialTypeRSAPrivateKey,
+		PublicKey:      pub,
+		Expiration:     time.Now().Add(time.Hour),
 	}
 
 	createResp := dbtesting.AssertNewUser(t, db, createReq)
 	defer attemptDropUser(connURL, user, createResp.Username, privateKey)
 
-	assertPasswordCredentialsExist(t, connURL, createResp.Username, password)
+	assertRSAKeyPairCredentialsExist(t, connURL, createResp.Username, priv)
 
 	renewReq := dbplugin.UpdateUserRequest{
 		Username: createResp.Username,
@@ -332,10 +293,7 @@ func TestSnowflake_RenewUser(t *testing.T) {
 
 	dbtesting.AssertUpdateUser(t, db, renewReq)
 
-	// Sleep longer than the initial expiration time
-	time.Sleep(2 * time.Second)
-
-	assertPasswordCredentialsExist(t, connURL, createResp.Username, password)
+	assertRSAKeyPairCredentialsExist(t, connURL, createResp.Username, priv)
 }
 
 func TestSnowflake_RevokeUser(t *testing.T) {
@@ -381,7 +339,7 @@ func TestSnowflake_RevokeUser(t *testing.T) {
 			}
 			dbtesting.AssertInitialize(t, db, initReq)
 
-			password := "y8fva_sdVA3rasf"
+			pub, priv := testGenerateRSAKeyPair(t, 2048)
 
 			createReq := dbplugin.NewUserRequest{
 				UsernameConfig: dbplugin.UsernameMetadata{
@@ -390,16 +348,20 @@ func TestSnowflake_RevokeUser(t *testing.T) {
 				},
 				Statements: dbplugin.Statements{
 					Commands: []string{
-						fmt.Sprintf(defaultPasswordCreationStmts, dbName),
+						fmt.Sprintf(defaultRSAKeyCreationStmts, dbName),
 					},
 				},
-				Password:   password,
-				Expiration: time.Now().Add(time.Hour),
+				CredentialType: dbplugin.CredentialTypeRSAPrivateKey,
+				PublicKey:      pub,
+				Expiration:     time.Now().Add(time.Hour),
 			}
 
 			createResp := dbtesting.AssertNewUser(t, db, createReq)
+			t.Cleanup(func() {
+				attemptDropUser(connURL, user, createResp.Username, privateKey)
+			})
 
-			assertPasswordCredentialsExist(t, connURL, createResp.Username, password)
+			assertRSAKeyPairCredentialsExist(t, connURL, createResp.Username, priv)
 
 			deleteReq := dbplugin.DeleteUserRequest{
 				Username: createResp.Username,
@@ -408,7 +370,7 @@ func TestSnowflake_RevokeUser(t *testing.T) {
 				},
 			}
 			dbtesting.AssertDeleteUser(t, db, deleteReq)
-			assertPasswordCredentialsDoNotExist(t, connURL, createResp.Username, password)
+			assertRSAKeyPairCredentialsDoNotExist(t, connURL, createResp.Username, priv)
 		})
 	}
 }
@@ -434,7 +396,7 @@ func TestSnowflake_DefaultUsernameTemplate(t *testing.T) {
 	}
 	dbtesting.AssertInitialize(t, db, initReq)
 
-	password := "y8fva_sdVA3rasf"
+	pub, priv := testGenerateRSAKeyPair(t, 2048)
 	createReq := dbplugin.NewUserRequest{
 		UsernameConfig: dbplugin.UsernameMetadata{
 			DisplayName: "test",
@@ -442,11 +404,12 @@ func TestSnowflake_DefaultUsernameTemplate(t *testing.T) {
 		},
 		Statements: dbplugin.Statements{
 			Commands: []string{
-				fmt.Sprintf(defaultPasswordCreationStmts, dbName),
+				fmt.Sprintf(defaultRSAKeyCreationStmts, dbName),
 			},
 		},
-		Password:   password,
-		Expiration: time.Now().Add(time.Hour),
+		CredentialType: dbplugin.CredentialTypeRSAPrivateKey,
+		PublicKey:      pub,
+		Expiration:     time.Now().Add(time.Hour),
 	}
 	createResp := dbtesting.AssertNewUser(t, db, createReq)
 	defer attemptDropUser(connURL, user, createResp.Username, privateKey)
@@ -455,7 +418,7 @@ func TestSnowflake_DefaultUsernameTemplate(t *testing.T) {
 		t.Fatalf("Missing username")
 	}
 
-	assertPasswordCredentialsExist(t, connURL, createResp.Username, password)
+	assertRSAKeyPairCredentialsExist(t, connURL, createResp.Username, priv)
 
 	require.Regexp(t, `^v_test_test_[a-zA-Z0-9]{20}_[0-9]{10}$`, createResp.Username)
 }
@@ -482,7 +445,7 @@ func TestSnowflake_CustomUsernameTemplate(t *testing.T) {
 	}
 	dbtesting.AssertInitialize(t, db, initReq)
 
-	password := "y8fva_sdVA3rasf"
+	pub, priv := testGenerateRSAKeyPair(t, 2048)
 	createReq := dbplugin.NewUserRequest{
 		UsernameConfig: dbplugin.UsernameMetadata{
 			DisplayName: "test",
@@ -490,11 +453,12 @@ func TestSnowflake_CustomUsernameTemplate(t *testing.T) {
 		},
 		Statements: dbplugin.Statements{
 			Commands: []string{
-				fmt.Sprintf(defaultPasswordCreationStmts, dbName),
+				fmt.Sprintf(defaultRSAKeyCreationStmts, dbName),
 			},
 		},
-		Password:   password,
-		Expiration: time.Now().Add(time.Hour),
+		CredentialType: dbplugin.CredentialTypeRSAPrivateKey,
+		PublicKey:      pub,
+		Expiration:     time.Now().Add(time.Hour),
 	}
 	createResp := dbtesting.AssertNewUser(t, db, createReq)
 	defer attemptDropUser(connURL, user, createResp.Username, privateKey)
@@ -503,7 +467,7 @@ func TestSnowflake_CustomUsernameTemplate(t *testing.T) {
 		t.Fatalf("Missing username")
 	}
 
-	assertPasswordCredentialsExist(t, connURL, createResp.Username, password)
+	assertRSAKeyPairCredentialsExist(t, connURL, createResp.Username, priv)
 
 	require.Regexp(t, `^test_[a-zA-Z0-9]{10}$`, createResp.Username)
 }
@@ -569,53 +533,10 @@ func verifyConnWithKeyPairCredential(connString, username string, private *rsa.P
 	return db.Ping()
 }
 
-func verifyConnWithPasswordCredential(connString, username, password string) error {
-	connURL := fmt.Sprintf("%s:%s@%s", username, password, connString)
-	conf, err := gosnowflake.ParseDSN(connURL)
-	if err != nil {
-		return err
-	}
-
-	config := &gosnowflake.Config{
-		Authenticator: gosnowflake.AuthTypeSnowflake,
-		Account:       conf.Account,
-		Region:        conf.Region,
-		Database:      conf.Database,
-		Schema:        conf.Schema,
-		User:          username,
-		Password:      password,
-	}
-
-	dsn, err := gosnowflake.DSN(config)
-	if err != nil {
-		return err
-	}
-
-	db, err := sql.Open("snowflake", dsn)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-	return db.Ping()
-}
-
-func assertPasswordCredentialsExist(t *testing.T, connString, username, password string) {
+func assertRSAKeyPairCredentialsDoNotExist(t *testing.T, connString, username string, private *rsa.PrivateKey) {
 	t.Helper()
-	err := verifyConnWithPasswordCredential(connString, username, password)
-	if err != nil {
-		t.Fatalf("failed to log in with password credential: %s", err)
-	}
-}
-
-// assertPasswordCredentialsDoNotExist is a helper to assert db creds were
-// properly removed. A successful assertion will result in the gosnowflake
-// default logger to output `msg="Authentication FAILED"` in the test logs.
-func assertPasswordCredentialsDoNotExist(t *testing.T, connString, username, password string) {
-	t.Helper()
-	err := verifyConnWithPasswordCredential(connString, username, password)
-	if err == nil {
-		t.Fatalf("logged in when it shouldn't have been able to")
-	}
+	err := verifyConnWithKeyPairCredential(connString, username, private)
+	require.Error(t, err, "revoked RSA credentials must not authenticate")
 }
 
 func assertRSAKeyPairCredentialsExist(t *testing.T, connString, username string, private *rsa.PrivateKey) {
@@ -640,10 +561,11 @@ func attemptDropUser(connString, rootUser, username string, privateKey []byte) {
 	db, err := openSnowflake(connString, rootUser, privateKey)
 	if err != nil {
 		log.Printf("connection issue: %s", err)
+		return
 	}
 
 	defer db.Close()
-	_, err = db.Exec(fmt.Sprintf("DROP USER %s", username))
+	_, err = db.Exec(fmt.Sprintf("DROP USER IF EXISTS %s", username))
 	if err != nil {
 		log.Printf("query issue: %s", err)
 	}
