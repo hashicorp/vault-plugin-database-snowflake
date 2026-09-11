@@ -1,4 +1,11 @@
-## Unreleased
+## v0.17.0
+### September 11, 2026
+
+* [VAULT-50062] Prepare v0.17.0 Release (#190)
+* test: use RSA in Snowflake acceptance tests (#192)
+* Upgrading version for crypto as part of security vulnerability (#187)
+* go: resolve GHSA-wf45-q9ch-q8gh by upgrading github.com/apache/thrift to v0.23.0 (#181)
+
 ## v0.16.0
 ### March 17, 2026
 
