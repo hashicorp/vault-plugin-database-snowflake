@@ -6,7 +6,6 @@
 * Upgrading version for crypto as part of security vulnerability (#187)
 * go: resolve GHSA-wf45-q9ch-q8gh by upgrading github.com/apache/thrift to v0.23.0 (#181)
 
-## Unreleased
 ## v0.16.0
 ### March 17, 2026
 
