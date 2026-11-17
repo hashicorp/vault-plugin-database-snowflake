@@ -4,7 +4,7 @@ A Vault plugin for Snowflake. It is one of the supported plugins for the HashiCo
 Vault Database Secrets Engine and allows for the programmatic generation of unique, 
 ephemeral Snowflake [Database User](https://docs.snowflake.com/en/user-guide/admin-user-management.html) 
 credentials in a Snowflake account.
-
+ 
 This project uses the database plugin interface introduced in Vault version 1.6.0.
 
 **This plugin is included in Vault version 1.7+.**
