@@ -1,7 +1,7 @@
 # vault-plugin-database-snowflake
 
 A Vault plugin for Snowflake. It is one of the supported plugins for the HashiCorp  
-Vault Database Secrets Engine and allows for the programmatic generation of unique,   
+Vault Database Secrets Engine and allows for the programmatic generation of unique,     
 ephemeral Snowflake [Database User](https://docs.snowflake.com/en/user-guide/admin-user-management.html) 
 credentials in a Snowflake account.
   
