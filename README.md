@@ -1,4 +1,4 @@
-# vault-plugin-database-snowflake
+ # vault-plugin-database-snowflake
 
 A Vault plugin for Snowflake. It is one of the supported plugins for the HashiCorp 
 Vault Database Secrets Engine and allows for the programmatic generation of unique, 
