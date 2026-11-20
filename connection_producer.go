@@ -22,7 +22,7 @@ import (
 
 	"github.com/hashicorp/vault/sdk/database/helper/connutil"
 	"github.com/mitchellh/mapstructure"
-	"github.com/snowflakedb/gosnowflake"
+	"github.com/snowflakedb/gosnowflake/v2"
 )
 
 var (
@@ -221,7 +221,7 @@ func getSnowflakeConfig(connectionURL, username string, providedPrivateKey []byt
 	}
 
 	// add authenticator query param to URL to indicate JWT auth
-	// https://pkg.go.dev/github.com/snowflakedb/gosnowflake#hdr-JWT_authentication
+	// https://pkg.go.dev/github.com/snowflakedb/gosnowflake/v2#hdr-JWT_authentication
 	q := u.Query()
 	q.Set("authenticator", gosnowflake.AuthTypeJwt.String())
 	//q.Set("privateKey", "true") // This is needed to avoid gosnowflake trying to read the private key from a file path
