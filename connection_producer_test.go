@@ -9,7 +9,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"github.com/snowflakedb/gosnowflake"
+	"github.com/snowflakedb/gosnowflake/v2"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -120,7 +120,7 @@ func TestGetSnowflakeConfig(t *testing.T) {
 			require.Equal(t, tc.expectedConfig.Database, cfg.Database)
 			require.Equal(t, tc.expectedConfig.Authenticator, cfg.Authenticator)
 			require.Equal(t, tc.expectedConfig.DisableOCSPChecks, cfg.DisableOCSPChecks)
-			require.Equal(t, tc.expectedConfig.KeepSessionAlive, cfg.KeepSessionAlive)
+			require.Equal(t, tc.expectedConfig.ServerSessionKeepAlive, cfg.ServerSessionKeepAlive)
 			require.NotNil(t, cfg.PrivateKey)
 		})
 	}
