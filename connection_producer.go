@@ -1,4 +1,4 @@
-// Copyright IBM Corp. 2020, 2025
+// Copyright IBM Corp. 2020, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package snowflake
@@ -18,9 +18,8 @@ import (
 	"github.com/hashicorp/errwrap"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
-
 	"github.com/hashicorp/vault/sdk/database/helper/connutil"
+	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
 	"github.com/mitchellh/mapstructure"
 	"github.com/snowflakedb/gosnowflake"
 )
@@ -197,9 +196,10 @@ func (c *snowflakeConnectionProducer) close() error {
 func (c *snowflakeConnectionProducer) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	err := c.close()
 	c.snowflakeDB = nil
 
-	return c.close()
+	return err
 }
 
 // Open the DB connection to Snowflake or return an error.
@@ -224,7 +224,7 @@ func getSnowflakeConfig(connectionURL, username string, providedPrivateKey []byt
 	// https://pkg.go.dev/github.com/snowflakedb/gosnowflake#hdr-JWT_authentication
 	q := u.Query()
 	q.Set("authenticator", gosnowflake.AuthTypeJwt.String())
-	//q.Set("privateKey", "true") // This is needed to avoid gosnowflake trying to read the private key from a file path
+	// q.Set("privateKey", "true") // This is needed to avoid gosnowflake trying to read the private key from a file path
 	u.RawQuery = q.Encode()
 
 	// construct dsn for gosnowflake
