@@ -1,19 +1,77 @@
-// Copyright IBM Corp. 2020, 2025
+// Copyright IBM Corp. 2020, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package snowflake
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"database/sql"
 	"encoding/pem"
-	"github.com/snowflakedb/gosnowflake"
 	"testing"
 
+	"github.com/snowflakedb/gosnowflake"
 	"github.com/stretchr/testify/require"
 )
+
+// TestSnowflakeConnectionProducer_Close verifies that cleanup closes the underlying
+// pool for both authentication modes, including after the connection is reopened.
+func TestSnowflakeConnectionProducer_Close(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]map[string]interface{}{
+		"key pair": {
+			"connection_url": "account.snowflakecomputing.com/db",
+			"username":       "user",
+			"private_key":    testPrivateKey,
+		},
+		"password": {
+			"connection_url": "{{username}}:{{password}}@account.snowflakecomputing.com/db",
+			"username":       "user",
+			"password":       "password",
+		},
+	}
+
+	for name, config := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			var producer snowflakeConnectionProducer
+			_, err := producer.Init(context.Background(), config, false)
+			require.NoError(t, err, "initialize the connection producer without contacting Snowflake")
+
+			// A canceled context prevents network access if cleanup leaves the pool open.
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			for range 3 {
+				connection, err := producer.Connection(context.Background())
+				require.NoError(t, err, "open a new connection pool")
+				pool := connection.(*sql.DB)
+				t.Cleanup(func() {
+					require.NoError(t, pool.Close(), "release the pool even if the regression test fails")
+				})
+
+				require.NoError(t, producer.Close(), "close the connection producer")
+				require.Nil(t, producer.snowflakeDB, "clear the cached pool so the next use reopens it")
+				require.EqualError(t, pool.PingContext(ctx), "sql: database is closed", "close the original pool before discarding its handle")
+				require.NoError(t, producer.Close(), "closing an already closed producer is safe")
+			}
+		})
+	}
+}
+
+// TestSnowflakeConnectionProducer_CloseUninitialized verifies that cleanup is safe
+// when initialization has not opened a database pool.
+func TestSnowflakeConnectionProducer_CloseUninitialized(t *testing.T) {
+	t.Parallel()
+
+	var producer snowflakeConnectionProducer
+	require.NoError(t, producer.Close(), "closing an unused producer is safe")
+}
 
 func TestOpenSnowflake(t *testing.T) {
 	// Generate a new RSA key for testing

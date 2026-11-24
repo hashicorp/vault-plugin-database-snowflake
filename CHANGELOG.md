@@ -1,3 +1,9 @@
+## Unreleased
+
+BUG FIXES:
+
+* Close database connection pools before clearing their handles to prevent connection and goroutine leaks during plugin cleanup.
+
 ## v0.17.1
 ### October 23, 2026
 
